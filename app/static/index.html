@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parley — Deal Desk</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <h1>Parley <span class="dot">·</span> Deal Desk</h1>
+      <p class="subtitle">You're the seller. Negotiate against a trained AI buyer.</p>
+    </header>
+
+    <main class="card">
+      <section id="start-panel" class="panel">
+        <p class="lead">Start a new negotiation to get your reservation price.</p>
+        <button id="start-btn" class="btn btn-primary">Start negotiation</button>
+      </section>
+
+      <section id="game-panel" class="panel hidden">
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-label">Your minimum</span>
+            <span id="seller-min" class="stat-value">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Round</span>
+            <span id="round-num" class="stat-value">0</span>
+            <span class="stat-sub">/ 10</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Buyer's offer</span>
+            <span id="buyer-offer" class="stat-value">—</span>
+          </div>
+        </div>
+
+        <div id="offer-form" class="offer-form">
+          <label for="ask-input">Your ask</label>
+          <div class="offer-row">
+            <input id="ask-input" type="number" step="0.1" placeholder="Enter your asking price" />
+            <button id="send-btn" class="btn btn-primary">Send offer</button>
+          </div>
+          <p id="error-msg" class="error hidden"></p>
+        </div>
+
+        <div id="outcome-banner" class="outcome hidden"></div>
+
+        <div class="log-wrap">
+          <h2>Negotiation log</h2>
+          <ul id="log-list" class="log-list"></ul>
+        </div>
+
+        <button id="new-btn" class="btn btn-secondary hidden">New negotiation</button>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
