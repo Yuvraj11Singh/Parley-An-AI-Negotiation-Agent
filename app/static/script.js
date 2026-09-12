@@ -1,138 +1,84 @@
-const startPanel = document.getElementById("start-panel");
-const gamePanel = document.getElementById("game-panel");
-const startBtn = document.getElementById("start-btn");
-const sendBtn = document.getElementById("send-btn");
-const newBtn = document.getElementById("new-btn");
-const askInput = document.getElementById("ask-input");
-const offerForm = document.getElementById("offer-form");
-const errorMsg = document.getElementById("error-msg");
-const outcomeBanner = document.getElementById("outcome-banner");
-const logList = document.getElementById("log-list");
+const preStart = document.getElementById('preStart');
+const activeArea = document.getElementById('activeArea');
+const sellerMinEl = document.getElementById('sellerMin');
+const roundLabel = document.getElementById('roundLabel');
+const logBody = document.getElementById('logBody');
+const askInput = document.getElementById('askInput');
+const offerRow = document.getElementById('offerRow');
+const outcomeBox = document.getElementById('outcomeBox');
+const newBtn = document.getElementById('newBtn');
 
-const sellerMinEl = document.getElementById("seller-min");
-const roundNumEl = document.getElementById("round-num");
-const buyerOfferEl = document.getElementById("buyer-offer");
+let sellerMin = null;
 
-function resetUI() {
-  offerForm.classList.remove("hidden");
-  newBtn.classList.add("hidden");
-  outcomeBanner.classList.add("hidden");
-  outcomeBanner.className = "outcome hidden";
-  errorMsg.classList.add("hidden");
-  logList.innerHTML = "";
-  askInput.value = "";
-  sendBtn.disabled = false;
+async function startNegotiation(){
+  const res = await fetch('/api/new_negotiation', { method: 'POST' });
+  const data = await res.json();
+  sellerMin = data.seller_min;
+
+  preStart.style.display = 'none';
+  activeArea.style.display = 'block';
+  sellerMinEl.textContent = sellerMin.toFixed(1);
+  roundLabel.textContent = `0 / 10`;
+  logBody.innerHTML = '';
+  offerRow.style.display = 'flex';
+  outcomeBox.style.display = 'none';
+  newBtn.style.display = 'none';
+  askInput.value = '';
+  askInput.focus();
 }
 
-function addLogEntry(text, round) {
-  const li = document.createElement("li");
-  const roundSpan = document.createElement("span");
-  roundSpan.className = "log-round";
-  roundSpan.textContent = round != null ? `Round ${round}` : "";
-  const textSpan = document.createElement("span");
-  textSpan.textContent = text;
-  li.appendChild(roundSpan);
-  li.appendChild(textSpan);
-  logList.appendChild(li);
-  logList.scrollTop = logList.scrollHeight;
-}
+async function sendOffer(){
+  const val = parseFloat(askInput.value);
+  if (isNaN(val)) return;
 
-function showOutcome(data) {
-  outcomeBanner.classList.remove("hidden");
-  offerForm.classList.add("hidden");
-  newBtn.classList.remove("hidden");
+  const res = await fetch('/api/offer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ask: val })
+  });
+  const data = await res.json();
 
-  let text;
-  if (data.outcome === "deal") {
-    outcomeBanner.className = "outcome deal";
-    text = `Deal closed at ${data.deal_price}! (Buyer's true max was ${data.buyer_max})`;
-  } else if (data.outcome === "walk") {
-    outcomeBanner.className = "outcome walk";
-    text = `The buyer walked away. (Buyer's true max was ${data.buyer_max})`;
-  } else {
-    outcomeBanner.className = "outcome timeout";
-    text = `Negotiation timed out after ${data.round} rounds with no deal. (Buyer's true max was ${data.buyer_max})`;
-  }
-  outcomeBanner.textContent = text;
-  addLogEntry(text, data.round);
-}
-
-function updateGameState(data) {
-  roundNumEl.textContent = data.round;
-  buyerOfferEl.textContent = data.buyer_offer;
-
-  if (data.done) {
-    showOutcome(data);
-  }
-}
-
-startBtn.addEventListener("click", async () => {
-  startBtn.disabled = true;
-  try {
-    const res = await fetch("/api/new_negotiation", { method: "POST" });
-    const data = await res.json();
-
-    sellerMinEl.textContent = data.seller_min;
-    roundNumEl.textContent = data.round;
-    buyerOfferEl.textContent = data.buyer_offer;
-
-    resetUI();
-    startPanel.classList.add("hidden");
-    gamePanel.classList.remove("hidden");
-    askInput.focus();
-  } catch (err) {
-    alert("Could not start a new negotiation. Is the server running?");
-  } finally {
-    startBtn.disabled = false;
-  }
-});
-
-sendBtn.addEventListener("click", async () => {
-  const ask = parseFloat(askInput.value);
-  if (Number.isNaN(ask)) {
-    errorMsg.textContent = "Enter a valid asking price.";
-    errorMsg.classList.remove("hidden");
+  if (data.error){
+    alert(data.error);
     return;
   }
 
-  errorMsg.classList.add("hidden");
-  sendBtn.disabled = true;
+  roundLabel.textContent = `${data.round} / 10`;
 
-  try {
-    const res = await fetch("/api/offer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ask }),
-    });
-    const data = await res.json();
+  const row = document.createElement('tr');
+  let status = '—';
+  if (data.done){
+    if (data.outcome === 'deal') status = `deal closed @ ${data.deal_price.toFixed(1)}`;
+    else if (data.outcome === 'walk') status = 'buyer walked away';
+    else if (data.outcome === 'timeout') status = 'timed out';
+  }
+  row.innerHTML = `<td>${data.round}</td><td>${val.toFixed(1)}</td><td>${data.buyer_offer.toFixed(1)}</td><td>${status}</td>`;
+  logBody.appendChild(row);
 
-    if (!res.ok) {
-      errorMsg.textContent = data.error || "Something went wrong.";
-      errorMsg.classList.remove("hidden");
-      return;
+  askInput.value = '';
+
+  if (data.done){
+    offerRow.style.display = 'none';
+    outcomeBox.style.display = 'block';
+    newBtn.style.display = 'inline-block';
+
+    let msgClass = data.outcome === 'deal' ? 'deal' : data.outcome === 'walk' ? 'walk' : 'timeout';
+    let msg = '';
+    if (data.outcome === 'deal'){
+      msg = `Deal closed at <b>${data.deal_price.toFixed(1)}</b>. The buyer's hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
+    } else if (data.outcome === 'walk'){
+      msg = `The buyer walked away. Its hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
+    } else {
+      msg = `Negotiation timed out after 10 rounds. The buyer's hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
     }
-
-    addLogEntry(
-      `You asked ${ask.toFixed(1)} → buyer countered ${data.buyer_offer}`,
-      data.round
-    );
-    askInput.value = "";
-    updateGameState(data);
-  } catch (err) {
-    errorMsg.textContent = "Could not reach the server.";
-    errorMsg.classList.remove("hidden");
-  } finally {
-    sendBtn.disabled = false;
+    outcomeBox.className = `human-status ${msgClass}`;
+    outcomeBox.innerHTML = msg;
+  } else {
+    askInput.focus();
   }
-});
+}
 
-askInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    sendBtn.click();
-  }
-});
-
-newBtn.addEventListener("click", () => {
-  gamePanel.classList.add("hidden");
-  startPanel.classList.remove("hidden");
-});
+document.getElementById('startBtn').addEventListener('click', startNegotiation);
+document.getElementById('sendBtn').addEventListener('click', sendOffer);
+askInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendOffer(); });
+newBtn.addEventListener('click', startNegotiation);
