@@ -20,11 +20,22 @@ function setStep(name){
   if (name === 'outcome') stepOutcome.setAttribute('data-active', 'true');
 }
 
-function addMsg(role, label, value, extraClass){
-  const div = document.createElement('div');
-  div.className = `msg ${role}${extraClass ? ' ' + extraClass : ''}`;
-  div.innerHTML = `<div class="role">${label}</div><div class="value">${value}</div>`;
-  chatThread.appendChild(div);
+function addRoundRow(round, askVal, buyerOffer){
+  const row = document.createElement('div');
+  row.className = 'round-row';
+  row.innerHTML = `
+    <div class="round-badge">${round}</div>
+    <div class="side seller-side">
+      <div class="label">Your ask</div>
+      <div class="value">${askVal.toFixed(1)}</div>
+    </div>
+    <div class="arrow">⇌</div>
+    <div class="side buyer-side">
+      <div class="label">Buyer offer</div>
+      <div class="value">${buyerOffer.toFixed(1)}</div>
+    </div>
+  `;
+  chatThread.appendChild(row);
   chatThread.scrollTop = chatThread.scrollHeight;
 }
 
@@ -79,8 +90,7 @@ async function sendOffer(){
     return;
   }
 
-  addMsg('seller', `You — Round ${data.round}`, `Ask: ${val.toFixed(1)}`);
-  addMsg('buyer', `Buyer — Round ${data.round}`, `Offer: ${data.buyer_offer.toFixed(1)}`);
+  addRoundRow(data.round, val, data.buyer_offer);
 
   askInput.value = '';
 
