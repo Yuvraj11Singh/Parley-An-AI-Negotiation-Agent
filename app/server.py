@@ -22,6 +22,16 @@ agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_random
 
 session = {"state": None, "seller_min": None}
 
+CATEGORIES = {
+    "electronics":   {"name": "Electronics & Gadgets",        "icon": "💻", "min": 350,    "max": 650},
+    "furniture":     {"name": "Office Furniture",              "icon": "🪑", "min": 210,    "max": 390},
+    "vehicles":      {"name": "Vehicles & Fleet",               "icon": "🚚", "min": 21000,  "max": 39000},
+    "supplies":      {"name": "Industrial & Bulk Supplies",     "icon": "📦", "min": 10500,  "max": 19500},
+    "services":      {"name": "Professional Services",          "icon": "🧰", "min": 5600,   "max": 10400},
+    "real_estate":   {"name": "Commercial Real Estate",         "icon": "🏢", "min": 140000, "max": 260000},
+}
+DEFAULT_CATEGORY = "electronics"
+
 
 def _serialize(state: NegotiationState, revealed: bool = False):
     return {
@@ -40,11 +50,25 @@ def index():
     return send_from_directory(app.static_folder, "index.html")
 
 
+@app.route("/desk")
+def desk():
+    return send_from_directory(app.static_folder, "desk.html")
+
+
+@app.route("/api/categories", methods=["GET"])
+def get_categories():
+    return jsonify(CATEGORIES)
+
+
 @app.route("/api/new_negotiation", methods=["POST"])
 def new_negotiation():
-    seller_min = random.uniform(35, 100)
-    buyer_max = random.uniform(70, 130)
-    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, 10))
+    data = request.get_json(silent=True) or {}
+    category_id = data.get("category", DEFAULT_CATEGORY)
+    cat = CATEGORIES.get(category_id, CATEGORIES[DEFAULT_CATEGORY])
+
+    seller_min = random.uniform(cat["min"], cat["max"])
+    buyer_max = random.uniform(cat["min"] * 1.15, cat["max"] * 1.3)
+    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, cat["max"] * 0.05))
 
     state = NegotiationState(
         buyer_max=buyer_max,
@@ -54,8 +78,13 @@ def new_negotiation():
     )
     session["state"] = state
     session["seller_min"] = seller_min
+    session["category"] = category_id
 
-    return jsonify({"seller_min": round(seller_min, 1), **_serialize(state)})
+    return jsonify({
+        "seller_min": round(seller_min, 1),
+        "category": cat["name"],
+        **_serialize(state)
+    })
 
 
 @app.route("/api/offer", methods=["POST"])

@@ -1,3 +1,6 @@
+const urlParams = new URLSearchParams(window.location.search);
+const categoryId = urlParams.get('category') || 'electronics';
+
 const chatThread = document.getElementById('chatThread');
 const chatEmpty = document.getElementById('chatEmpty');
 const startBtn = document.getElementById('startBtn');
@@ -58,9 +61,15 @@ function updateProposal(round, sellerAsk, buyerOffer, statusText, statusClass){
 }
 
 async function startNegotiation(){
-  const res = await fetch('/api/new_negotiation', { method: 'POST' });
+  const res = await fetch('/api/new_negotiation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: categoryId })
+  });
   const data = await res.json();
   sellerMin = data.seller_min;
+
+  document.querySelector('header h1').textContent = `Parley — ${data.category}`;
 
   chatThread.innerHTML = '';
   chatEmpty.style.display = 'none';
