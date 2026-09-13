@@ -18,7 +18,7 @@ from src.environment import NegotiationState, DEAL_TOLERANCE
 app = Flask(__name__, static_folder="static")
 
 agent = QLearningAgent()
-agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v2.json"))
+agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v3.json"))
 
 session = {"state": None, "seller_min": None}
 

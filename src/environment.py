@@ -25,7 +25,7 @@ class NegotiationState:
 
 import random
 
-ACTIONS = [0.0, 0.15, 0.35, 0.6, 0.85, 1.0, "WALK"]
+ACTIONS = [0.0, 0.15, 0.35, 0.6, 0.85, "WALK"]
 MAX_ROUNDS = 10
 DEAL_TOLERANCE = 0.05
 

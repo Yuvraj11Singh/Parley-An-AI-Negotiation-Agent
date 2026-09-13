@@ -54,7 +54,7 @@ class RandomizedSeller(BaseSeller):
     """
 
     def __init__(self, base_range=(0.05, 0.30), growth_range=(0.005, 0.035),
-                 markup_range=(0.2, 0.7), stall_chance=0.35, stall_round_range=(2, 4)):
+                 markup_range=(0.2, 0.7), stall_chance=0.18, stall_round_range=(2, 4)):
         self.base_range = base_range
         self.growth_range = growth_range
         self.markup_range = markup_range
