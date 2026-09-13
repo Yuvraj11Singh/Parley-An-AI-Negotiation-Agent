@@ -13,7 +13,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
-from src.environment import NegotiationState
+from src.environment import NegotiationState, DEAL_TOLERANCE
 
 app = Flask(__name__, static_folder="static")
 
@@ -82,7 +82,7 @@ def submit_offer():
     concession = float(action)
     state.buyer_offer = min(state.buyer_max, state.buyer_offer + concession * state.gap)
 
-    if state.buyer_offer >= state.seller_ask:
+    if state.buyer_offer >= state.seller_ask - DEAL_TOLERANCE:
         state.done = True
         state.outcome = "deal"
         state.deal_price = state.seller_ask

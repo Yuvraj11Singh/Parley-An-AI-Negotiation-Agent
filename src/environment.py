@@ -27,6 +27,7 @@ import random
 
 ACTIONS = [0.0, 0.15, 0.35, 0.6, 0.85, 1.0, "WALK"]
 MAX_ROUNDS = 10
+DEAL_TOLERANCE = 0.05
 
 
 class NegotiationEnv:
@@ -80,7 +81,7 @@ class NegotiationEnv:
         concession = float(action)
         s.buyer_offer = min(s.buyer_max, s.buyer_offer + concession * s.gap)
 
-        if s.buyer_offer >= s.seller_ask:
+        if s.buyer_offer >= s.seller_ask - DEAL_TOLERANCE:
             s.done = True
             s.outcome = "deal"
             s.deal_price = s.seller_ask
@@ -90,7 +91,7 @@ class NegotiationEnv:
 
         s.seller_ask = self.opponent.respond(s)
 
-        if s.seller_ask <= s.buyer_offer:
+        if s.buyer_offer >= s.seller_ask - DEAL_TOLERANCE:
             s.done = True
             s.outcome = "deal"
             s.deal_price = s.seller_ask
