@@ -45,31 +45,43 @@ class FixedScheduleSeller(BaseSeller):
 
 class RandomizedSeller(BaseSeller):
     """
-    The generalization fix: draws a fresh toughness, opening markup, and
-    concession growth rate every episode instead of using one fixed
-    schedule.
+    Same underlying mechanic as FixedScheduleSeller, but every episode
+    draws a fresh toughness, opening markup, and concession growth rate
+    instead of using one fixed schedule. Also includes a chance of
+    genuine multi-round stalls — holding the ask nearly flat for a few
+    rounds — so the agent learns to handle real stubbornness rather than
+    only ever facing opponents who move a little every single round.
     """
 
     def __init__(self, base_range=(0.05, 0.30), growth_range=(0.005, 0.035),
-                 markup_range=(0.2, 0.7)):
+                 markup_range=(0.2, 0.7), stall_chance=0.35, stall_round_range=(2, 4)):
         self.base_range = base_range
         self.growth_range = growth_range
         self.markup_range = markup_range
+        self.stall_chance = stall_chance
+        self.stall_round_range = stall_round_range
         self._seller_min = None
         self._base = None
         self._growth = None
         self._markup = None
+        self._stall_until_round = 0
 
     def reset(self, seller_min: float) -> None:
         self._seller_min = seller_min
         self._base = random.uniform(*self.base_range)
         self._growth = random.uniform(*self.growth_range)
         self._markup = random.uniform(*self.markup_range)
+        if random.random() < self.stall_chance:
+            self._stall_until_round = random.randint(*self.stall_round_range)
+        else:
+            self._stall_until_round = 0
 
     def opening_ask(self, seller_min: float) -> float:
         return seller_min + (seller_min * self._markup + 10 + random.uniform(0, 20))
 
     def _concession_rate(self, round_num: int) -> float:
+        if round_num <= self._stall_until_round:
+            return 0.0
         return min(0.9, self._base + self._growth * round_num)
 
     def respond(self, state) -> float:
