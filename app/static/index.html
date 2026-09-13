@@ -4,49 +4,54 @@
 <meta charset="UTF-8">
 <title>Parley — Deal Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>PARLEY // DEAL DESK</h1>
-      <div class="sub">You're the seller. Negotiate against a trained AI buyer.</div>
-    </div>
-    <div class="tag">Live Agent · Q-Learning</div>
-  </header>
-
-  <div class="panel">
-    <h2>Negotiation</h2>
-    <div id="preStart">
-      <p class="explain">Start a new negotiation to get your reservation price.</p>
-      <button id="startBtn" class="primary">Start negotiation</button>
-    </div>
-
-    <div id="activeArea" style="display:none;">
-      <div class="statline">
-        <span>Your minimum: <b id="sellerMin">—</b></span>
-        <span>Round: <b id="roundLabel">0 / 10</b></span>
-      </div>
-
-      <table id="logTable">
-        <thead><tr><th>Round</th><th>Your ask</th><th>Buyer's offer</th><th>Status</th></tr></thead>
-        <tbody id="logBody"></tbody>
-      </table>
-
-      <div class="human-row" id="offerRow">
-        <input type="number" id="askInput" placeholder="Enter your asking price">
-        <button id="sendBtn" class="primary">Send offer</button>
-      </div>
-
-      <div id="outcomeBox" class="human-status" style="display:none;"></div>
-      <button id="newBtn" class="primary" style="display:none; margin-top:12px;">↻ New negotiation</button>
-    </div>
+<header>
+  <div>
+    <h1>Parley — Deal Desk</h1>
+    <div class="sub">You're the seller. Negotiate against a trained AI buyer.</div>
   </div>
+  <div class="tag">LIVE AGENT · Q-LEARNING</div>
+</header>
 
-  <footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
+<div class="app-shell">
+  <aside class="stepper">
+    <div class="step" id="step-start" data-active="true">
+      <span class="step-num">1</span><span class="step-label">Start</span>
+    </div>
+    <div class="step" id="step-negotiate">
+      <span class="step-num">2</span><span class="step-label">Negotiation</span>
+    </div>
+    <div class="step" id="step-outcome">
+      <span class="step-num">3</span><span class="step-label">Outcome</span>
+    </div>
+  </aside>
+
+  <main class="chat-col">
+    <div id="chatThread" class="chat-thread">
+      <div class="chat-empty" id="chatEmpty">
+        Start a negotiation to begin the conversation.
+      </div>
+    </div>
+    <div class="chat-input-row" id="offerRow" style="display:none;">
+      <input type="number" id="askInput" placeholder="Enter your asking price">
+      <button id="sendBtn" class="primary">Send</button>
+    </div>
+    <button id="startBtn" class="primary" style="margin-top:8px;">Start negotiation</button>
+    <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
+  </main>
+
+  <aside class="proposal-panel">
+    <h3>Current Proposal</h3>
+    <div id="proposalCard" class="proposal-card">
+      <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+    </div>
+  </aside>
 </div>
+
+<footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
 <script src="/static/script.js"></script>
 </body>
 </html>
