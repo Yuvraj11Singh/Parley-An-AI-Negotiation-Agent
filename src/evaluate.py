@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import json
+import random
 
 from .agent import QLearningAgent
 from .environment import NegotiationEnv
@@ -90,7 +91,12 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", type=int, default=2000)
     parser.add_argument("--plot", default=None)
     parser.add_argument("--json", default=None)
+    parser.add_argument("--seed", type=int, default=None,
+                         help="random seed for evaluation draws, independent of training seed")
     args = parser.parse_args()
+
+    if args.seed is not None:
+        random.seed(args.seed)
 
     results = run_full_comparison(args.model, args.episodes)
     print_results(results)

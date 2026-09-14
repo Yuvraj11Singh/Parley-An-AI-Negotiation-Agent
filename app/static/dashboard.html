@@ -53,9 +53,9 @@
           <div class="home-card-sub" id="hcDealSub">No negotiations yet</div>
         </div>
         <div class="home-card">
-          <div class="home-card-label">Value captured</div>
+          <div class="home-card-label">Savings secured</div>
           <div class="home-card-big" id="hcValue">—</div>
-          <div class="home-card-sub" id="hcValueSub">Total margin above your minimums, across closed deals</div>
+          <div class="home-card-sub" id="hcValueSub">What the agent saved below its authorized maximum, across closed deals</div>
         </div>
         <div class="home-card">
           <div class="home-card-label">In progress</div>
@@ -98,12 +98,38 @@
 
     <section id="view-insights" class="dash-view" style="display:none;">
       <h2>Agent Insights</h2>
-      <p class="explain">Real cross-evaluation results for the current trained agent (v3), measured over 3,000 episodes per condition.</p>
+      <p class="explain">Held-out cross-evaluation of the served v5 agent (seed 42), 3,000 episodes per condition. Spread shows variation across three independent training seeds.</p>
       <div class="perf-grid">
-        <div class="perf-card"><div class="perf-label">vs. Slow seller</div><div class="perf-val">58.2%<span>deal rate</span></div><div class="perf-sub">39.2% surplus captured</div></div>
-        <div class="perf-card"><div class="perf-label">vs. Medium seller</div><div class="perf-val">83.9%<span>deal rate</span></div><div class="perf-sub">69.2% surplus captured</div></div>
-        <div class="perf-card"><div class="perf-label">vs. Fast seller</div><div class="perf-val">86.6%<span>deal rate</span></div><div class="perf-sub">88.2% surplus captured</div></div>
-        <div class="perf-card"><div class="perf-label">vs. Randomized seller</div><div class="perf-val">76.3%<span>deal rate</span></div><div class="perf-sub">71.7% surplus captured</div></div>
+        <div class="perf-card">
+          <div class="perf-label">vs. Slow seller</div>
+          <div class="perf-val">68.0%<span>deal rate</span></div>
+          <div class="perf-sub">43.8% surplus captured</div>
+          <div class="perf-spread">3-seed mean: 54.9% ± 9.3 · surplus 41.3% ± 1.8</div>
+        </div>
+        <div class="perf-card">
+          <div class="perf-label">vs. Medium seller</div>
+          <div class="perf-val">85.2%<span>deal rate</span></div>
+          <div class="perf-sub">74.5% surplus captured</div>
+          <div class="perf-spread">3-seed mean: 79.5% ± 4.0 · surplus 61.5% ± 9.4</div>
+        </div>
+        <div class="perf-card">
+          <div class="perf-label">vs. Fast seller</div>
+          <div class="perf-val">87.2%<span>deal rate</span></div>
+          <div class="perf-sub">85.3% surplus captured</div>
+          <div class="perf-spread">3-seed mean: 74.3% ± 9.2 · surplus 80.7% ± 4.3</div>
+        </div>
+        <div class="perf-card">
+          <div class="perf-label">vs. Randomized seller</div>
+          <div class="perf-val">82.0%<span>deal rate</span></div>
+          <div class="perf-sub">70.5% surplus captured</div>
+          <div class="perf-spread">3-seed mean: 73.5% ± 6.1 · surplus 62.6% ± 5.7</div>
+        </div>
+        <div class="perf-card">
+          <div class="perf-label">vs. Mixed pool</div>
+          <div class="perf-val">80.1%<span>deal rate</span></div>
+          <div class="perf-sub">66.7% surplus captured</div>
+          <div class="perf-spread">3-seed mean: 69.4% ± 7.6 · surplus 60.1% ± 4.7</div>
+        </div>
       </div>
 
       <div class="dash-section">

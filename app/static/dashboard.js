@@ -241,8 +241,12 @@ function loadHome(){
   document.getElementById('hcDealBar').style.width = `${Math.round(dealRate*100)}%`;
   document.getElementById('hcDealSub').textContent = records.length ? `${deals.length} of ${records.length} negotiations closed` : 'No negotiations yet';
 
-  const value = deals.reduce((s, r) => s + ((r.dealPrice != null && r.sellerMin != null) ? Math.max(0, r.dealPrice - r.sellerMin) : 0), 0);
-  document.getElementById('hcValue').textContent = deals.length ? fmtMoney(value) : '—';
+  const savings = deals.reduce((s, r) => s + ((r.dealPrice != null && r.buyerMax != null) ? Math.max(0, r.buyerMax - r.dealPrice) : 0), 0);
+  const avgSaving = deals.length ? savings / deals.length : 0;
+  document.getElementById('hcValue').textContent = deals.length ? fmtMoney(savings) : '—';
+  document.getElementById('hcValueSub').textContent = deals.length
+    ? `Avg ${fmtMoney(avgSaving)} saved per deal · below the agent's authorized maximum`
+    : 'What the agent saved below its authorized maximum, across closed deals';
 
   fetch('/api/session_status').then(r => r.json()).then(s => {
     const el = document.getElementById('hcProgress');

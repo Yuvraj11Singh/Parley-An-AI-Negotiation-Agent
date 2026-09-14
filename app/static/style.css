@@ -407,6 +407,7 @@ body:has(.landing){
 .perf-val{ font-family:var(--mono); font-size:28px; font-weight:700; color:var(--accent); }
 .perf-val span{ font-size:11px; font-weight:500; color:var(--ink-dim); font-family:var(--sans); margin-left:6px; }
 .perf-sub{ font-size:12px; color:var(--ink-dim); margin-top:6px; }
+.perf-spread{ font-family:var(--mono); font-size:10.5px; color:var(--ink-dim); margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
 
 .audit-search{
   width:100%; font-family:var(--mono); font-size:13px; background:var(--panel);
@@ -483,7 +484,7 @@ body:has(.landing){
 
 /* let dashboard views use the full available width */
 .dash-view{ max-width:none; }
-.perf-grid{ grid-template-columns:repeat(4,1fr); }
+.perf-grid{ grid-template-columns:repeat(5,1fr); }
 @media (max-width:1100px){ .perf-grid{ grid-template-columns:repeat(2,1fr); } }
 @media (max-width:600px){ .perf-grid{ grid-template-columns:1fr; } }
 .category-grid{ max-width:none; margin:0; }
