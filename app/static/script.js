@@ -1,5 +1,4 @@
 const urlParams = new URLSearchParams(window.location.search);
-const categoryId = urlParams.get('category') || 'electronics';
 
 const chatThread = document.getElementById('chatThread');
 const chatEmpty = document.getElementById('chatEmpty');
@@ -10,6 +9,12 @@ const askInput = document.getElementById('askInput');
 const sendBtn = document.getElementById('sendBtn');
 const proposalCard = document.getElementById('proposalCard');
 
+const itemCard = document.getElementById('itemCard');
+const icName = document.getElementById('icName');
+const icDesc = document.getElementById('icDesc');
+const icDetails = document.getElementById('icDetails');
+const icRange = document.getElementById('icRange');
+
 const stepStart = document.getElementById('step-start');
 const stepNegotiate = document.getElementById('step-negotiate');
 const stepOutcome = document.getElementById('step-outcome');
@@ -18,6 +23,9 @@ let sellerMin = null;
 let roundHistory = [];
 let negotiationStartedAt = null;
 let maxRounds = 10;
+let itemId = urlParams.get('item');
+let itemName = null;
+let categoryId = null;
 
 function saveToAuditTrail(outcome, dealPrice, buyerMax){
   const record = {
@@ -25,6 +33,8 @@ function saveToAuditTrail(outcome, dealPrice, buyerMax){
     timestamp: new Date().toISOString(),
     startedAt: negotiationStartedAt,
     category: categoryId,
+    itemId: itemId,
+    itemName: itemName,
     sellerMin: sellerMin,
     rounds: roundHistory,
     outcome,
@@ -85,15 +95,24 @@ async function startNegotiation(){
   const res = await fetch('/api/new_negotiation', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: categoryId })
+    body: JSON.stringify({ item: itemId })
   });
   const data = await res.json();
   sellerMin = data.seller_min;
   roundHistory = [];
   negotiationStartedAt = new Date().toISOString();
   maxRounds = data.max_rounds || 10;
+  itemId = data.item.id;
+  itemName = data.item.name;
+  categoryId = data.category_id;
 
-  document.querySelector('.desk-header h1').textContent = `Deal Desk — ${data.category}`;
+  document.querySelector('.desk-header h1').textContent = `Deal Desk — ${data.item.name}`;
+
+  icName.textContent = data.item.name;
+  icDesc.textContent = data.item.description;
+  icDetails.innerHTML = data.item.details.map(d => `<li>${d}</li>`).join('');
+  icRange.textContent = `$${data.item.min.toLocaleString()} – $${data.item.max.toLocaleString()}`;
+  itemCard.style.display = 'flex';
 
   chatThread.innerHTML = '';
   chatEmpty.style.display = 'none';

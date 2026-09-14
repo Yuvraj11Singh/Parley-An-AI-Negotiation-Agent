@@ -56,12 +56,22 @@
         <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
       </div>
 
-      <aside class="proposal-panel">
-        <h3>Current Proposal</h3>
-        <div id="proposalCard" class="proposal-card">
-          <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+      <div class="proposal-col">
+        <div id="itemCard" class="item-card-side" style="display:none;">
+          <div class="item-card-label">Negotiating</div>
+          <div class="item-name" id="icName"></div>
+          <div class="item-desc" id="icDesc"></div>
+          <ul class="item-details" id="icDetails"></ul>
+          <div class="item-range" id="icRange"></div>
         </div>
-      </aside>
+
+        <aside class="proposal-panel">
+          <h3>Current Proposal</h3>
+          <div id="proposalCard" class="proposal-card">
+            <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+          </div>
+        </aside>
+      </div>
     </div>
 
     <footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parley — Items</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app-frame">
+  <aside class="app-sidebar">
+    <div class="app-brand">
+      <div class="app-brand-name">Parley</div>
+      <div class="app-brand-sub">AI negotiation agent</div>
+    </div>
+    <nav class="app-nav">
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📊</span> Dashboard</a>
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">🗂️</span> Categories</a>
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📜</span> Audit Trail</a>
+    </nav>
+    <div class="app-sidebar-foot">
+      <div class="tag">LIVE AGENT · Q-LEARNING</div>
+    </div>
+  </aside>
+
+  <main class="app-content">
+    <a href="/dashboard" class="back-link">← Categories</a>
+    <h2 id="categoryHeading">Items</h2>
+    <p class="explain" id="categorySub">Choose an item to start negotiating.</p>
+    <div class="item-grid" id="itemGrid"></div>
+  </main>
+</div>
+
+<script src="/static/items.js"></script>
+</body>
+</html>

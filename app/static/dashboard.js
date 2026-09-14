@@ -12,11 +12,12 @@ navItems.forEach(item => {
   });
 });
 
-const CATEGORY_DISPLAY_NAMES = {
-  electronics: "Electronics & Gadgets", furniture: "Office Furniture",
-  vehicles: "Vehicles & Fleet", supplies: "Industrial & Bulk Supplies",
-  services: "Professional Services", real_estate: "Commercial Real Estate",
-};
+let CATEGORY_DISPLAY_NAMES = {};
+
+function recordLabel(r){
+  const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
+  return r.itemName ? `${r.itemName} · ${catName}` : catName;
+}
 
 let selectedAuditId = null;
 
@@ -30,8 +31,7 @@ function loadAuditTrail(filterText = ''){
   if (!list) return;
   const records = JSON.parse(localStorage.getItem('parley_audit_trail') || '[]');
   const filtered = records.filter(r => {
-    const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
-    return `${catName} ${r.outcome}`.toLowerCase().includes(filterText.toLowerCase());
+    return `${recordLabel(r)} ${r.outcome}`.toLowerCase().includes(filterText.toLowerCase());
   });
 
   if (filtered.length === 0){
@@ -64,7 +64,6 @@ function loadAuditTrail(filterText = ''){
 }
 
 function renderAuditListItem(r){
-  const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
   const time = new Date(r.timestamp).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
   const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice?.toFixed(1)}` : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
   const badgeClass = r.outcome === 'deal' ? 'deal' : r.outcome === 'walk' ? 'walk' : 'timeout';
@@ -72,7 +71,7 @@ function renderAuditListItem(r){
   return `
     <div class="audit-item ${selected}" data-id="${r.id}">
       <div class="audit-item-top">
-        <span class="audit-item-cat">${catName}</span>
+        <span class="audit-item-cat">${recordLabel(r)}</span>
         <span class="audit-item-time">${time}</span>
       </div>
       <div class="audit-item-bottom">
@@ -85,9 +84,8 @@ function renderAuditListItem(r){
 
 function renderAuditDetail(r){
   const detail = document.getElementById('auditDetail');
-  const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
 
-  let html = `<div class="chat-header"><span class="chat-header-cat">${catName}</span><span class="chat-header-date">${new Date(r.timestamp).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })}</span></div>`;
+  let html = `<div class="chat-header"><span class="chat-header-cat">${recordLabel(r)}</span><span class="chat-header-date">${new Date(r.timestamp).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })}</span></div>`;
   html += `<div class="chat-thread-detail">`;
   html += `<div class="chat-sys"><span class="chat-sys-time">${fmtTime(r.startedAt)}</span> Negotiation started</div>`;
 
@@ -291,11 +289,10 @@ function loadHome(){
   const list = document.getElementById('recentList');
   const recent = records.slice(0, 6);
   list.innerHTML = recent.length ? recent.map(r => {
-    const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
     const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice?.toFixed(1)}` : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
     const badgeClass = r.outcome === 'deal' ? 'deal' : r.outcome === 'walk' ? 'walk' : 'timeout';
     return `<div class="recent-item" data-id="${r.id}">
-      <div class="recent-item-main"><div class="recent-item-cat">${catName}</div><div class="recent-item-meta">${r.rounds.length} rounds</div></div>
+      <div class="recent-item-main"><div class="recent-item-cat">${recordLabel(r)}</div><div class="recent-item-meta">${r.rounds.length} rounds</div></div>
       <span class="audit-badge ${badgeClass}">${outcomeLabel}</span>
       <span class="recent-item-time">${timeAgo(r.timestamp)}</span>
     </div>`;
@@ -305,9 +302,8 @@ function loadHome(){
   // activity feed (latest round events across recent negotiations)
   const events = [];
   records.slice(0, 5).forEach(r => {
-    const catName = CATEGORY_DISPLAY_NAMES[r.category] || r.category;
     r.rounds.forEach(row => {
-      if (row.at) events.push({ at: row.at, cat: catName, text: `Buyer countered with <b>${row.offer.toFixed(1)}</b> after your ask of <b>${row.ask.toFixed(1)}</b>`, round: row.round });
+      if (row.at) events.push({ at: row.at, cat: recordLabel(r), text: `Buyer countered with <b>${row.offer.toFixed(1)}</b> after your ask of <b>${row.ask.toFixed(1)}</b>`, round: row.round });
     });
   });
   events.sort((a,b) => new Date(b.at) - new Date(a.at));
@@ -327,7 +323,16 @@ document.getElementById('allNegotiationsBtn')?.addEventListener('click', () => {
   document.querySelector('.dash-nav-item[data-view="audit"]').click();
 });
 
-loadHome();
+fetch('/api/categories')
+  .then(res => res.json())
+  .then(data => {
+    Object.keys(data.categories).forEach(id => {
+      CATEGORY_DISPLAY_NAMES[id] = data.categories[id].name;
+    });
+    loadHome();
+  })
+  .catch(() => loadHome());
+
 document.querySelectorAll('.dash-nav-item').forEach(item => {
   if (item.dataset.view === 'dashboard') item.addEventListener('click', () => loadHome());
 });

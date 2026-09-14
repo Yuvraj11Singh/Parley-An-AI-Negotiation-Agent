@@ -24,14 +24,61 @@ agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_random
 session = {"state": None, "seller_min": None}
 
 CATEGORIES = {
-    "electronics":   {"name": "Electronics & Gadgets",        "icon": "💻", "min": 350,    "max": 650},
-    "furniture":     {"name": "Office Furniture",              "icon": "🪑", "min": 210,    "max": 390},
-    "vehicles":      {"name": "Vehicles & Fleet",               "icon": "🚚", "min": 21000,  "max": 39000},
-    "supplies":      {"name": "Industrial & Bulk Supplies",     "icon": "📦", "min": 10500,  "max": 19500},
-    "services":      {"name": "Professional Services",          "icon": "🧰", "min": 5600,   "max": 10400},
-    "real_estate":   {"name": "Commercial Real Estate",         "icon": "🏢", "min": 140000, "max": 260000},
+    "electronics": {"name": "Electronics & Gadgets",     "icon": "💻"},
+    "furniture":   {"name": "Office Furniture",           "icon": "🪑"},
+    "vehicles":    {"name": "Vehicles & Fleet",           "icon": "🚚"},
+    "supplies":    {"name": "Industrial & Bulk Supplies", "icon": "📦"},
+    "services":    {"name": "Professional Services",      "icon": "🧰"},
+    "real_estate": {"name": "Commercial Real Estate",     "icon": "🏢"},
+    "software":    {"name": "Software & SaaS Licenses",   "icon": "🧩"},
+    "logistics":   {"name": "Logistics & Freight",        "icon": "🚢"},
+    "materials":   {"name": "Raw Materials",              "icon": "⛏️"},
+    "machinery":   {"name": "Manufacturing Machinery",    "icon": "⚙️"},
 }
-DEFAULT_CATEGORY = "electronics"
+
+ITEMS = {
+    # electronics
+    "laptops_20":     {"category": "electronics", "name": "Business laptops — 20 units", "description": "Mid-range 14\" business laptops for a new sales team.", "details": ["Core i5 / 16GB / 512GB SSD", "Qty 20, 3-year onsite warranty", "Delivery within 3 weeks"], "min": 16000, "max": 24000},
+    "monitors_40":    {"category": "electronics", "name": "27\" monitors — 40 units", "description": "Standard office displays for a floor refresh.", "details": ["27\" IPS, 1440p, USB-C", "Qty 40, 2-year warranty", "Palletized delivery"], "min": 9000, "max": 14000},
+    "server_rack":    {"category": "electronics", "name": "Rack server — 2 units", "description": "Two rack servers for an on-prem application cluster.", "details": ["Dual-socket, 128GB RAM, 4×2TB NVMe", "Qty 2, 5-year support contract", "Installation included"], "min": 18000, "max": 28000},
+    # furniture
+    "desks_50":       {"category": "furniture", "name": "Sit-stand desks — 50 units", "description": "Electric height-adjustable desks for an open-plan office.", "details": ["Dual-motor, 120×70cm top", "Qty 50, assembled on site", "5-year warranty"], "min": 18000, "max": 27000},
+    "chairs_60":      {"category": "furniture", "name": "Ergonomic task chairs — 60 units", "description": "Mesh-back ergonomic chairs for all workstations.", "details": ["Adjustable lumbar, 4D arms", "Qty 60, delivered assembled", "10-year warranty"], "min": 15000, "max": 24000},
+    "meeting_pods":   {"category": "furniture", "name": "Acoustic meeting pods — 4 units", "description": "Enclosed 4-person pods for a noisy open floor.", "details": ["Ventilated, lit, power + USB", "Qty 4, installation included", "Lead time 6 weeks"], "min": 32000, "max": 48000},
+    # vehicles
+    "vans_5":         {"category": "vehicles", "name": "Delivery vans — 5 units", "description": "Medium panel vans for last-mile delivery.", "details": ["Diesel, 3.5t, 11m³ cargo", "Qty 5, fleet livery included", "3-year service plan"], "min": 140000, "max": 200000},
+    "forklifts_2":    {"category": "vehicles", "name": "Electric forklifts — 2 units", "description": "Counterbalance forklifts for a distribution warehouse.", "details": ["2.5t capacity, lithium battery", "Qty 2, operator training included", "Spare parts kit"], "min": 55000, "max": 80000},
+    "exec_sedans_3":  {"category": "vehicles", "name": "Executive sedans — 3 units", "description": "Company cars for the senior leadership team.", "details": ["Hybrid, premium trim", "Qty 3, 4-year lease-to-own", "Maintenance included"], "min": 120000, "max": 165000},
+    # supplies
+    "packaging_pallets": {"category": "supplies", "name": "Corrugated packaging — 40 pallets", "description": "Annual supply of shipping cartons in three sizes.", "details": ["Double-wall, printed logo", "40 pallets, quarterly deliveries", "Recyclable stock"], "min": 22000, "max": 34000},
+    "safety_ppe":     {"category": "supplies", "name": "PPE annual contract", "description": "Gloves, eyewear, hi-vis, and hearing protection for 300 staff.", "details": ["Certified to local standards", "12-month supply, monthly restock", "Sizing kit included"], "min": 30000, "max": 45000},
+    "cleaning_supplies": {"category": "supplies", "name": "Facilities consumables — annual", "description": "Cleaning and washroom consumables for three sites.", "details": ["Eco-certified range", "12 months, auto-replenish", "Dispenser installation"], "min": 12000, "max": 20000},
+    # services
+    "it_support":     {"category": "services", "name": "Managed IT support — 12 months", "description": "Helpdesk and infrastructure support for 200 users.", "details": ["24/7 helpdesk, 4-hour SLA", "Monthly reporting", "Onboarding included"], "min": 60000, "max": 90000},
+    "legal_retainer": {"category": "services", "name": "Legal retainer — 12 months", "description": "Commercial contracts and compliance advisory.", "details": ["Up to 20 hours/month", "Dedicated partner contact", "Quarterly review"], "min": 48000, "max": 72000},
+    "brand_campaign": {"category": "services", "name": "Brand campaign — Q4", "description": "Creative, media planning, and production for a product launch.", "details": ["Multi-channel, 8-week run", "Two creative concepts", "Performance reporting"], "min": 75000, "max": 120000},
+    # real estate
+    "office_lease":   {"category": "real_estate", "name": "Office lease — 5,000 sq ft, 3 years", "description": "City-centre office space for a growing team.", "details": ["Fitted, 3-year term", "2 parking bays", "Annual rent negotiated"], "min": 150000, "max": 240000},
+    "warehouse_lease": {"category": "real_estate", "name": "Warehouse lease — 20,000 sq ft", "description": "Distribution warehouse near the ring road.", "details": ["Dock-level loading, 8m eaves", "5-year term, break at 3", "Annual rent negotiated"], "min": 180000, "max": 280000},
+    "retail_unit":    {"category": "real_estate", "name": "Retail unit — high street, 2 years", "description": "Ground-floor retail unit for a flagship store.", "details": ["1,200 sq ft, glazed frontage", "2-year term", "Fit-out contribution requested"], "min": 90000, "max": 140000},
+    # software
+    "crm_licenses":   {"category": "software", "name": "CRM licenses — 150 seats, annual", "description": "Sales CRM for the commercial team.", "details": ["Enterprise tier, SSO", "150 seats, 12 months", "Migration support"], "min": 54000, "max": 85000},
+    "erp_module":     {"category": "software", "name": "ERP finance module — annual", "description": "Finance and procurement module on the existing ERP.", "details": ["Up to 40 named users", "Implementation + training", "12-month support"], "min": 80000, "max": 130000},
+    "security_suite": {"category": "software", "name": "Endpoint security — 500 devices", "description": "EDR and device management across all endpoints.", "details": ["500 devices, 12 months", "24/7 SOC monitoring", "Compliance reporting"], "min": 35000, "max": 55000},
+    # logistics
+    "freight_contract": {"category": "logistics", "name": "Freight contract — 12 months", "description": "Domestic road freight for weekly regional distribution.", "details": ["~40 loads/month", "Tracked, insured", "Fuel surcharge capped"], "min": 220000, "max": 330000},
+    "customs_brokerage": {"category": "logistics", "name": "Customs brokerage — annual", "description": "Import clearance and compliance for ~600 shipments.", "details": ["All entry types", "Duty optimisation review", "Monthly reporting"], "min": 30000, "max": 48000},
+    "warehousing_3pl": {"category": "logistics", "name": "3PL warehousing — 6 months", "description": "Pick-pack-ship for seasonal e-commerce volume.", "details": ["2,000 pallet positions", "Peak-season staffing", "Returns handling"], "min": 110000, "max": 170000},
+    # materials
+    "steel_coil":     {"category": "materials", "name": "Hot-rolled steel coil — 200 t", "description": "Structural steel for a fabrication order.", "details": ["Grade S275, 3–6mm", "200 tonnes, two deliveries", "Mill certificates"], "min": 150000, "max": 220000},
+    "polymer_resin":  {"category": "materials", "name": "Polymer resin — 60 t", "description": "Injection-moulding grade resin for a production run.", "details": ["PP copolymer, natural", "60 tonnes, monthly call-off", "Batch traceability"], "min": 78000, "max": 115000},
+    "timber_stock":   {"category": "materials", "name": "Kiln-dried timber — 400 m³", "description": "Softwood stock for a joinery contract.", "details": ["C24 graded, 18% MC", "400 m³, staged delivery", "FSC certified"], "min": 130000, "max": 190000},
+    # machinery
+    "cnc_mill":       {"category": "machinery", "name": "CNC vertical mill", "description": "3-axis mill for a precision machining cell.", "details": ["Travel 1000×500×500mm", "Installation + commissioning", "2-year warranty"], "min": 95000, "max": 150000},
+    "packaging_line": {"category": "machinery", "name": "Automated packaging line", "description": "Case erector, filler, and sealer for a new SKU.", "details": ["30 cases/min", "Turnkey install", "Operator training"], "min": 220000, "max": 340000},
+    "compressor_system": {"category": "machinery", "name": "Compressed air system", "description": "Central compressor with dryer and distribution.", "details": ["75kW, VSD", "Install + 5-year service", "Energy audit included"], "min": 60000, "max": 95000},
+}
+DEFAULT_ITEM = "laptops_20"
 
 
 def _serialize(state: NegotiationState, revealed: bool = False):
@@ -66,9 +113,14 @@ def desk():
     return send_from_directory(app.static_folder, "desk.html")
 
 
+@app.route("/items")
+def items():
+    return send_from_directory(app.static_folder, "items.html")
+
+
 @app.route("/api/categories", methods=["GET"])
 def get_categories():
-    return jsonify(CATEGORIES)
+    return jsonify({"categories": CATEGORIES, "items": ITEMS})
 
 
 @app.route("/api/session_status", methods=["GET"])
@@ -76,9 +128,13 @@ def session_status():
     state = session.get("state")
     if state is None or state.done:
         return jsonify({"active": False})
+    item_id = session.get("item")
+    item = ITEMS.get(item_id)
     return jsonify({
         "active": True,
         "category": session.get("category"),
+        "item": item_id,
+        "item_name": item["name"] if item else None,
         "round": state.round,
     })
 
@@ -116,12 +172,16 @@ def training_log(version):
 @app.route("/api/new_negotiation", methods=["POST"])
 def new_negotiation():
     data = request.get_json(silent=True) or {}
-    category_id = data.get("category", DEFAULT_CATEGORY)
-    cat = CATEGORIES.get(category_id, CATEGORIES[DEFAULT_CATEGORY])
+    item_id = data.get("item", DEFAULT_ITEM)
+    item = ITEMS.get(item_id, ITEMS[DEFAULT_ITEM])
+    if item_id not in ITEMS:
+        item_id = DEFAULT_ITEM
+    category_id = item["category"]
+    cat = CATEGORIES.get(category_id, CATEGORIES[category_id])
 
-    seller_min = random.uniform(cat["min"], cat["max"])
-    buyer_max = random.uniform(cat["min"] * 1.15, cat["max"] * 1.3)
-    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, cat["max"] * 0.05))
+    seller_min = random.uniform(item["min"], item["max"])
+    buyer_max = random.uniform(item["min"] * 1.15, item["max"] * 1.3)
+    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, item["max"] * 0.05))
 
     state = NegotiationState(
         buyer_max=buyer_max,
@@ -132,11 +192,21 @@ def new_negotiation():
     session["state"] = state
     session["seller_min"] = seller_min
     session["category"] = category_id
+    session["item"] = item_id
 
     return jsonify({
         "seller_min": round(seller_min, 1),
         "category": cat["name"],
+        "category_id": category_id,
         "max_rounds": MAX_ROUNDS,
+        "item": {
+            "id": item_id,
+            "name": item["name"],
+            "description": item["description"],
+            "details": item["details"],
+            "min": item["min"],
+            "max": item["max"],
+        },
         **_serialize(state)
     })
 
