@@ -8,21 +8,47 @@
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
 <div class="landing">
   <div class="landing-hero">
-    <div class="tag">LIVE AGENT · Q-LEARNING</div>
-    <h1 class="landing-title">Parley</h1>
-    <p class="landing-sub">An AI negotiation agent, trained via reinforcement learning — watch it negotiate in real time below, or start your own.</p>
-    <a href="/categories" class="btn-primary-large">Start Negotiating</a>
+    <div class="tag reveal" style="--delay:0s">LIVE AGENT · Q-LEARNING</div>
+    <h1 class="landing-title reveal" style="--delay:0.1s">Parley</h1>
+    <div class="landing-tagline reveal" style="--delay:0.2s">Where deals get done.</div>
+    <p class="landing-sub reveal" style="--delay:0.3s">An AI negotiation agent, trained via reinforcement learning — watch it negotiate in real time below, or start your own.</p>
+    <a href="/categories" class="btn-primary-large reveal" style="--delay:0.4s">
+      <span>Start Negotiating</span>
+    </a>
   </div>
 
-  <div class="ticker-panel">
-    <div class="ticker-label">LIVE REPLAY — REAL NEGOTIATION TRANSCRIPTS</div>
+  <div class="ticker-panel reveal" style="--delay:0.5s">
+    <div class="ticker-label"><span class="live-dot"></span>LIVE REPLAY — REAL NEGOTIATION TRANSCRIPTS</div>
     <div id="tickerStage" class="ticker-stage"></div>
+  </div>
+
+  <div class="how-it-works">
+    <div class="hiw-step" data-reveal>
+      <div class="hiw-icon">🗂️</div>
+      <div class="hiw-title">Choose a category</div>
+      <div class="hiw-desc">Pick from electronics, vehicles, real estate, and more — each with realistic price ranges.</div>
+    </div>
+    <div class="hiw-step" data-reveal>
+      <div class="hiw-icon">💬</div>
+      <div class="hiw-title">Negotiate live</div>
+      <div class="hiw-desc">Send offers, hold firm, or concede — the agent responds using a policy learned entirely through trial and error.</div>
+    </div>
+    <div class="hiw-step" data-reveal>
+      <div class="hiw-icon">🤝</div>
+      <div class="hiw-title">Close the deal</div>
+      <div class="hiw-desc">See the outcome, the agent's true reservation price revealed, and how much value each side captured.</div>
+    </div>
   </div>
 </div>
 
 <footer>Every replay above is a real transcript from testing the trained agent — not scripted or invented.</footer>
 <script src="/static/ticker.js"></script>
+<script src="/static/landing.js"></script>
 </body>
 </html>
