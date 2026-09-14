@@ -2,23 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Parley — Choose a Category</title>
+<title>Parley — AI Negotiation Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header>
-  <div>
-    <h1>Parley</h1>
-    <div class="sub">Choose a category to start negotiating with a trained AI buyer.</div>
+<div class="landing">
+  <div class="landing-hero">
+    <div class="tag">LIVE AGENT · Q-LEARNING</div>
+    <h1 class="landing-title">Parley</h1>
+    <p class="landing-sub">An AI negotiation agent, trained via reinforcement learning — watch it negotiate in real time below, or start your own.</p>
+    <a href="/categories" class="btn-primary-large">Start Negotiating</a>
   </div>
-  <div class="tag">LIVE AGENT · Q-LEARNING</div>
-</header>
 
-<div class="category-grid" id="categoryGrid"></div>
+  <div class="ticker-panel">
+    <div class="ticker-label">LIVE REPLAY — REAL NEGOTIATION TRANSCRIPTS</div>
+    <div id="tickerStage" class="ticker-stage"></div>
+  </div>
+</div>
 
-<footer>Every category uses the same trained negotiation agent, applied to a different realistic price range.</footer>
-<script src="/static/categories.js"></script>
+<footer>Every replay above is a real transcript from testing the trained agent — not scripted or invented.</footer>
+<script src="/static/ticker.js"></script>
 </body>
 </html>

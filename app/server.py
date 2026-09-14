@@ -50,6 +50,11 @@ def index():
     return send_from_directory(app.static_folder, "index.html")
 
 
+@app.route("/categories")
+def categories():
+    return send_from_directory(app.static_folder, "categories.html")
+
+
 @app.route("/desk")
 def desk():
     return send_from_directory(app.static_folder, "desk.html")
