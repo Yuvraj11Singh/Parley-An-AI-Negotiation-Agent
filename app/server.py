@@ -14,12 +14,12 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
-from src.environment import NegotiationState, deal_tolerance
+from src.environment import MAX_ROUNDS, NegotiationState, deal_tolerance
 
 app = Flask(__name__, static_folder="static")
 
 agent = QLearningAgent()
-agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v4.json"))
+agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v5.json"))
 
 session = {"state": None, "seller_min": None}
 
@@ -84,6 +84,7 @@ def session_status():
 
 
 TRAINING_LOGS = {
+    "v5": "train_randomized_v5.csv",
     "v4": "train_randomized_v4.csv",
     "v3": "train_randomized_v3.csv",
     "v2": "train_randomized_v2.csv",
@@ -135,6 +136,7 @@ def new_negotiation():
     return jsonify({
         "seller_min": round(seller_min, 1),
         "category": cat["name"],
+        "max_rounds": MAX_ROUNDS,
         **_serialize(state)
     })
 
@@ -169,7 +171,7 @@ def submit_offer():
         state.deal_price = state.seller_ask
         return jsonify(_serialize(state, revealed=True))
 
-    if state.round >= 10:
+    if state.round >= MAX_ROUNDS:
         state.done = True
         state.outcome = "timeout"
         return jsonify(_serialize(state, revealed=True))

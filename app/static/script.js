@@ -17,6 +17,7 @@ const stepOutcome = document.getElementById('step-outcome');
 let sellerMin = null;
 let roundHistory = [];
 let negotiationStartedAt = null;
+let maxRounds = 10;
 
 function saveToAuditTrail(outcome, dealPrice, buyerMax){
   const record = {
@@ -73,7 +74,7 @@ function addStatusMsg(outcomeClass, html){
 function updateProposal(round, sellerAsk, buyerOffer, statusText, statusClass){
   proposalCard.innerHTML = `
     <div class="proposal-row"><span>Your minimum</span><b>${sellerMin.toFixed(1)}</b></div>
-    <div class="proposal-row"><span>Round</span><b>${round} / 10</b></div>
+    <div class="proposal-row"><span>Round</span><b>${round} / ${maxRounds}</b></div>
     <div class="proposal-row"><span>Your ask</span><b>${sellerAsk !== null ? sellerAsk.toFixed(1) : '—'}</b></div>
     <div class="proposal-row"><span>Buyer offer</span><b>${buyerOffer !== null ? buyerOffer.toFixed(1) : '—'}</b></div>
     <div class="proposal-row ${statusClass || ''}"><span>Status</span><b>${statusText}</b></div>
@@ -90,6 +91,7 @@ async function startNegotiation(){
   sellerMin = data.seller_min;
   roundHistory = [];
   negotiationStartedAt = new Date().toISOString();
+  maxRounds = data.max_rounds || 10;
 
   document.querySelector('.desk-header h1').textContent = `Deal Desk — ${data.category}`;
 
@@ -140,7 +142,7 @@ async function sendOffer(){
       html = `The buyer walked away. Its hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
     } else {
       cls = 'timeout';
-      html = `Negotiation timed out after 10 rounds. Buyer's hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
+      html = `Negotiation timed out after ${maxRounds} rounds. Buyer's hidden maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
     }
     addStatusMsg(cls, html);
     updateProposal(data.round, val, data.buyer_offer, data.outcome.toUpperCase(), cls);

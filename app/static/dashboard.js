@@ -107,7 +107,7 @@ function renderAuditDetail(r){
   let outcomeText, cls;
   if (r.outcome === 'deal'){ cls='deal'; outcomeText = `Deal closed at <b>${r.dealPrice?.toFixed(1)}</b> — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
   else if (r.outcome === 'walk'){ cls='walk'; outcomeText = `Buyer walked away — hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
-  else { cls='timeout'; outcomeText = `Timed out — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
+  else { cls='timeout'; outcomeText = `Timed out after ${r.rounds.length} rounds — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
   html += `<div class="chat-sys ${cls}"><span class="chat-sys-time">${fmtTime(r.timestamp)}</span> ${outcomeText}</div>`;
   html += `</div>`;
 
@@ -180,7 +180,7 @@ let insightsLoaded = false;
 document.querySelectorAll('.dash-nav-item').forEach(item => {
   if (item.dataset.view === 'insights'){
     item.addEventListener('click', () => {
-      if (!insightsLoaded){ loadLearningCurve('v4'); insightsLoaded = true; }
+      if (!insightsLoaded){ loadLearningCurve('v5'); insightsLoaded = true; }
     });
   }
 });

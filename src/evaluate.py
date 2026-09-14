@@ -15,7 +15,7 @@ import json
 
 from .agent import QLearningAgent
 from .environment import NegotiationEnv
-from .opponent import FixedScheduleSeller, RandomizedSeller
+from .opponent import FixedScheduleSeller, MixedSeller, RandomizedSeller
 
 
 def evaluate_against(agent: QLearningAgent, opponent, episodes: int):
@@ -50,6 +50,7 @@ def run_full_comparison(model_path: str, episodes: int):
     for toughness in ["slow", "medium", "fast"]:
         results[f"fixed_{toughness}"] = evaluate_against(agent, FixedScheduleSeller(toughness), episodes)
     results["randomized"] = evaluate_against(agent, RandomizedSeller(), episodes)
+    results["mixed"] = evaluate_against(agent, MixedSeller(), episodes)
     return results
 
 

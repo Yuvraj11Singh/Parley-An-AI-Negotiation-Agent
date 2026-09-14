@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .agent import QLearningAgent
 from .environment import NegotiationEnv
-from .opponent import FixedScheduleSeller, RandomizedSeller
+from .opponent import FixedScheduleSeller, MixedSeller, RandomizedSeller
 
 
 def build_opponent(kind: str, toughness: str):
@@ -21,6 +21,8 @@ def build_opponent(kind: str, toughness: str):
         return RandomizedSeller()
     if kind == "fixed":
         return FixedScheduleSeller(toughness=toughness)
+    if kind == "mixed":
+        return MixedSeller()
     raise ValueError(f"unknown opponent kind '{kind}'")
 
 
@@ -77,7 +79,7 @@ def train(episodes: int, opponent_kind: str, toughness: str, out_path: str,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--opponent", choices=["fixed", "randomized"], default="randomized")
+    parser.add_argument("--opponent", choices=["fixed", "randomized", "mixed"], default="randomized")
     parser.add_argument("--toughness", choices=["slow", "medium", "fast"], default="medium",
                          help="only used when --opponent=fixed")
     parser.add_argument("--episodes", type=int, default=30000)

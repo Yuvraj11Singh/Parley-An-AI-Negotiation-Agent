@@ -88,3 +88,32 @@ class RandomizedSeller(BaseSeller):
         rate = self._concession_rate(state.round)
         new_ask = state.seller_ask - rate * (state.seller_ask - state.buyer_offer)
         return max(self._seller_min, new_ask)
+
+
+class MixedSeller(BaseSeller):
+    """
+    Training pool: each episode draws one opponent type. Weighted toward
+    the randomized seller but with a substantial share of persistently
+    slow fixed-schedule sellers, which the previous training distribution
+    under-represented.
+    """
+
+    def __init__(self, weights=None):
+        self.pool = [
+            RandomizedSeller(),
+            FixedScheduleSeller("slow"),
+            FixedScheduleSeller("medium"),
+            FixedScheduleSeller("fast"),
+        ]
+        self.weights = weights or [0.55, 0.25, 0.10, 0.10]
+        self._current = None
+
+    def reset(self, seller_min: float) -> None:
+        self._current = random.choices(self.pool, weights=self.weights, k=1)[0]
+        self._current.reset(seller_min)
+
+    def opening_ask(self, seller_min: float) -> float:
+        return self._current.opening_ask(seller_min)
+
+    def respond(self, state) -> float:
+        return self._current.respond(state)
