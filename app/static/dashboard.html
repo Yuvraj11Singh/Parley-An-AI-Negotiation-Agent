@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parley — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Parley</h1>
+    <div class="sub">AI negotiation agent</div>
+  </div>
+  <div class="tag">LIVE AGENT · Q-LEARNING</div>
+</header>
+
+<div class="dash-shell">
+  <aside class="dash-nav">
+    <button class="dash-nav-item active" data-view="dashboard">
+      <span class="dash-nav-icon">📊</span> Dashboard
+    </button>
+    <button class="dash-nav-item" data-view="categories">
+      <span class="dash-nav-icon">🗂️</span> Categories
+    </button>
+    <button class="dash-nav-item" data-view="audit">
+      <span class="dash-nav-icon">📜</span> Audit Trail
+    </button>
+  </aside>
+
+  <main class="dash-main">
+    <section id="view-dashboard" class="dash-view">
+      <h2>Agent Performance</h2>
+      <p class="explain">Real cross-evaluation results for the current trained agent (v3), measured over 3,000 episodes per condition.</p>
+      <div class="perf-grid">
+        <div class="perf-card"><div class="perf-label">vs. Slow seller</div><div class="perf-val">58.2%<span>deal rate</span></div><div class="perf-sub">39.2% surplus captured</div></div>
+        <div class="perf-card"><div class="perf-label">vs. Medium seller</div><div class="perf-val">83.9%<span>deal rate</span></div><div class="perf-sub">69.2% surplus captured</div></div>
+        <div class="perf-card"><div class="perf-label">vs. Fast seller</div><div class="perf-val">86.6%<span>deal rate</span></div><div class="perf-sub">88.2% surplus captured</div></div>
+        <div class="perf-card"><div class="perf-label">vs. Randomized seller</div><div class="perf-val">76.3%<span>deal rate</span></div><div class="perf-sub">71.7% surplus captured</div></div>
+      </div>
+    </section>
+
+    <section id="view-categories" class="dash-view" style="display:none;">
+      <h2>Categories</h2>
+      <p class="explain">Choose a category to start negotiating.</p>
+      <div class="category-grid" id="categoryGrid"></div>
+    </section>
+
+    <section id="view-audit" class="dash-view" style="display:none;">
+      <h2>Audit Trail</h2>
+      <p class="explain">Every negotiation run in this browser — searchable, with full round-by-round detail.</p>
+      <input type="text" id="auditSearch" class="audit-search" placeholder="Search by category or outcome...">
+      <div id="auditList" class="audit-list"></div>
+    </section>
+  </main>
+</div>
+
+<script src="/static/categories.js"></script>
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

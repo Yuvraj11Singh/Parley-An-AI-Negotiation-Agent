@@ -15,6 +15,23 @@ const stepNegotiate = document.getElementById('step-negotiate');
 const stepOutcome = document.getElementById('step-outcome');
 
 let sellerMin = null;
+let roundHistory = [];
+
+function saveToAuditTrail(outcome, dealPrice, buyerMax){
+  const record = {
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    category: categoryId,
+    rounds: roundHistory,
+    outcome,
+    dealPrice: dealPrice || null,
+    buyerMax: buyerMax || null,
+  };
+  const existing = JSON.parse(localStorage.getItem('parley_audit_trail') || '[]');
+  existing.unshift(record);
+  if (existing.length > 50) existing.length = 50; // cap stored history
+  localStorage.setItem('parley_audit_trail', JSON.stringify(existing));
+}
 
 function setStep(name){
   [stepStart, stepNegotiate, stepOutcome].forEach(s => s.removeAttribute('data-active'));
@@ -68,6 +85,7 @@ async function startNegotiation(){
   });
   const data = await res.json();
   sellerMin = data.seller_min;
+  roundHistory = [];
 
   document.querySelector('header h1').textContent = `Parley — ${data.category}`;
 
@@ -100,6 +118,7 @@ async function sendOffer(){
   }
 
   addRoundRow(data.round, val, data.buyer_offer);
+  roundHistory.push({ round: data.round, ask: val, offer: data.buyer_offer });
 
   askInput.value = '';
 
@@ -121,6 +140,7 @@ async function sendOffer(){
     }
     addStatusMsg(cls, html);
     updateProposal(data.round, val, data.buyer_offer, data.outcome.toUpperCase(), cls);
+    saveToAuditTrail(data.outcome, data.deal_price, data.buyer_max);
   } else {
     updateProposal(data.round, val, data.buyer_offer, 'In progress');
     askInput.focus();
