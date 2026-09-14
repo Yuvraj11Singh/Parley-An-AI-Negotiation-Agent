@@ -1,8 +1,11 @@
 """
 agent.py — the buyer's tabular Q-learning agent.
 
-State is (round bucket, gap bucket) where gap = seller's current ask
-minus buyer's current offer, discretized. Reward only arrives at the end
+State is (round bucket, gap bucket) where gap is the seller's current
+ask minus buyer's current offer, measured as a fraction of the buyer's
+own max price and discretized — this keeps the state scale-invariant
+across price ranges (a $5 gap on a $50 deal and a $5,000 gap on a
+$50,000 deal look identical to the agent). Reward only arrives at the end
 of a negotiation (deal surplus, or 0), so the agent updates its whole
 round-by-round trajectory using a Monte Carlo return once the episode
 finishes, rather than bootstrapping mid-episode.
@@ -15,7 +18,7 @@ from pathlib import Path
 from .environment import ACTIONS, MAX_ROUNDS
 
 GAP_BUCKETS = 24
-GAP_STEP = 5
+GAP_STEP = 0.05   # each bucket is 5% of the buyer's own max price
 
 
 class QLearningAgent:
@@ -38,8 +41,11 @@ class QLearningAgent:
         self._trajectory = []  # cleared at the start of each episode
 
     @staticmethod
-    def _gap_to_bucket(gap: float) -> int:
-        b = round(max(0.0, gap) / GAP_STEP)
+    def _gap_to_bucket(state) -> int:
+        """Gap as a fraction of the buyer's own max — scale-invariant."""
+        denom = max(1e-9, state.buyer_max)
+        rel = max(0.0, state.gap) / denom
+        b = round(rel / GAP_STEP)
         return min(GAP_BUCKETS - 1, b)
 
     def start_episode(self):
@@ -47,7 +53,7 @@ class QLearningAgent:
 
     def act(self, state, greedy: bool = False):
         round_b = min(self.round_buckets - 1, state.round)
-        gap_b = self._gap_to_bucket(state.gap)
+        gap_b = self._gap_to_bucket(state)
 
         if not greedy and random.random() < self.epsilon:
             action_idx = random.randrange(len(ACTIONS))

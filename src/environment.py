@@ -25,9 +25,19 @@ class NegotiationState:
 
 import random
 
-ACTIONS = [0.0, 0.15, 0.35, 0.6, 0.85, "WALK"]
+ACTIONS = [0.0, 0.1, 0.2, 0.3, 0.45, 0.6, "WALK"]
 MAX_ROUNDS = 10
-DEAL_TOLERANCE = 0.05
+
+# Deal-closing tolerance, expressed as a fraction of the buyer's own max
+# price rather than a fixed absolute amount — a negotiation over $50k
+# needs a different absolute "close enough" margin than one over $50.
+# 0.05% of buyer_max reproduces the original fixed 0.05 tolerance exactly
+# at the environment's original ~100-unit price scale.
+DEAL_TOLERANCE_FRACTION = 0.0005
+
+
+def deal_tolerance(buyer_max: float) -> float:
+    return max(1e-9, buyer_max) * DEAL_TOLERANCE_FRACTION
 
 
 class NegotiationEnv:
@@ -81,7 +91,7 @@ class NegotiationEnv:
         concession = float(action)
         s.buyer_offer = min(s.buyer_max, s.buyer_offer + concession * s.gap)
 
-        if s.buyer_offer >= s.seller_ask - DEAL_TOLERANCE:
+        if s.buyer_offer >= s.seller_ask - deal_tolerance(s.buyer_max):
             s.done = True
             s.outcome = "deal"
             s.deal_price = s.seller_ask
@@ -91,7 +101,7 @@ class NegotiationEnv:
 
         s.seller_ask = self.opponent.respond(s)
 
-        if s.buyer_offer >= s.seller_ask - DEAL_TOLERANCE:
+        if s.buyer_offer >= s.seller_ask - deal_tolerance(s.buyer_max):
             s.done = True
             s.outcome = "deal"
             s.deal_price = s.seller_ask

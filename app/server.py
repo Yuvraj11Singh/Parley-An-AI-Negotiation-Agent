@@ -14,12 +14,12 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
-from src.environment import NegotiationState, DEAL_TOLERANCE
+from src.environment import NegotiationState, deal_tolerance
 
 app = Flask(__name__, static_folder="static")
 
 agent = QLearningAgent()
-agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v3.json"))
+agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v4.json"))
 
 session = {"state": None, "seller_min": None}
 
@@ -84,6 +84,7 @@ def session_status():
 
 
 TRAINING_LOGS = {
+    "v4": "train_randomized_v4.csv",
     "v3": "train_randomized_v3.csv",
     "v2": "train_randomized_v2.csv",
     "v1": "train_randomized.csv",
@@ -162,7 +163,7 @@ def submit_offer():
     concession = float(action)
     state.buyer_offer = min(state.buyer_max, state.buyer_offer + concession * state.gap)
 
-    if state.buyer_offer >= state.seller_ask - DEAL_TOLERANCE:
+    if state.buyer_offer >= state.seller_ask - deal_tolerance(state.buyer_max):
         state.done = True
         state.outcome = "deal"
         state.deal_price = state.seller_ask

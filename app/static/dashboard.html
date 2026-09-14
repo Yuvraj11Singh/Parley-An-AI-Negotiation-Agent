@@ -68,11 +68,11 @@
       <div class="home-mini-row">
         <div class="home-mini">
           <div class="home-mini-head"><span>By category</span><span id="mcCatTotal"></span></div>
-          <canvas id="miniCategory" height="90"></canvas>
+          <div class="mini-chart-wrap"><canvas id="miniCategory"></canvas></div>
         </div>
         <div class="home-mini">
           <div class="home-mini-head"><span>Activity this week</span><span id="mcWeekTotal"></span></div>
-          <canvas id="miniWeek" height="90"></canvas>
+          <div class="mini-chart-wrap"><canvas id="miniWeek"></canvas></div>
         </div>
         <div class="home-mini">
           <div class="home-mini-head"><span>Success rate</span><span id="mcSuccessSub"></span></div>
@@ -80,7 +80,7 @@
         </div>
         <div class="home-mini">
           <div class="home-mini-head"><span>Rounds to close</span><span id="mcRoundsAvg"></span></div>
-          <canvas id="miniRounds" height="90"></canvas>
+          <div class="mini-chart-wrap"><canvas id="miniRounds"></canvas></div>
         </div>
       </div>
 
@@ -113,7 +113,8 @@
             <p class="explain">How the agent improved over 30,000 self-play episodes. Deal rate and surplus captured climb as exploration (ε) decays.</p>
           </div>
           <select id="curveVersion" class="dash-select">
-            <option value="v3" selected>v3 (current)</option>
+            <option value="v4" selected>v4 (current)</option>
+            <option value="v3">v3</option>
             <option value="v2">v2</option>
             <option value="v1">v1</option>
             <option value="fixed_medium">fixed-schedule baseline</option>

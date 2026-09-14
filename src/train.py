@@ -8,6 +8,7 @@ Usage:
 
 import argparse
 import csv
+import random
 from pathlib import Path
 
 from .agent import QLearningAgent
@@ -82,6 +83,9 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", type=int, default=30000)
     parser.add_argument("--out", default="models/buyer.json")
     parser.add_argument("--log", default=None, help="optional CSV path to log training curve")
+    parser.add_argument("--seed", type=int, default=42,
+                         help="random seed, for reproducible training runs")
     args = parser.parse_args()
 
+    random.seed(args.seed)
     train(args.episodes, args.opponent, args.toughness, args.out, args.log)

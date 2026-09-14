@@ -574,3 +574,8 @@ body:has(.landing){
 .feed-time{ margin-left:auto; font-family:var(--mono); }
 .feed-text{ font-size:12.5px; color:var(--ink); }
 .feed-text b{ font-family:var(--mono); color:var(--accent); }
+
+.home-mini canvas{ max-height:110px !important; }
+.donut-wrap{ height:110px; }
+.donut-wrap canvas{ max-height:110px !important; }
+.mini-chart-wrap{ height:110px; position:relative; }

@@ -180,7 +180,7 @@ let insightsLoaded = false;
 document.querySelectorAll('.dash-nav-item').forEach(item => {
   if (item.dataset.view === 'insights'){
     item.addEventListener('click', () => {
-      if (!insightsLoaded){ loadLearningCurve('v3'); insightsLoaded = true; }
+      if (!insightsLoaded){ loadLearningCurve('v4'); insightsLoaded = true; }
     });
   }
 });
@@ -255,7 +255,7 @@ function loadHome(){
   }).catch(()=>{});
 
   const accent = cssVar('--accent'), deal = cssVar('--deal'), line = cssVar('--line'), dim = cssVar('--ink-dim');
-  const baseOpts = { responsive:true, plugins:{ legend:{display:false}, tooltip:{enabled:true} }, scales:{ x:{ grid:{display:false}, ticks:{ font:{family:'Inter', size:9}, color:dim } }, y:{ display:false } } };
+  const baseOpts = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{enabled:true} }, scales:{ x:{ grid:{display:false}, ticks:{ font:{family:'Inter', size:9}, color:dim } }, y:{ display:false } } };
 
   // by category
   const catCounts = {};
@@ -275,7 +275,7 @@ function loadHome(){
   const timeouts = records.filter(r => r.outcome === 'timeout').length;
   document.getElementById('mcSuccessSub').textContent = records.length ? `${deals.length} ok · ${walks + timeouts} failed` : '';
   document.getElementById('donutCenter').textContent = records.length ? `${Math.round(dealRate*100)}%` : '—';
-  makeMini('miniDonut', { type:'doughnut', data:{ labels:['Deals','Walked','Timed out'], datasets:[{ data:[deals.length, walks, timeouts], backgroundColor:[deal, cssVar('--walk'), cssVar('--timeout')], borderWidth:0 }] }, options:{ responsive:true, cutout:'72%', plugins:{ legend:{display:false} } } });
+  makeMini('miniDonut', { type:'doughnut', data:{ labels:['Deals','Walked','Timed out'], datasets:[{ data:[deals.length, walks, timeouts], backgroundColor:[deal, cssVar('--walk'), cssVar('--timeout')], borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, cutout:'72%', plugins:{ legend:{display:false} } } });
 
   // rounds to close sparkline (last 10 deals, oldest → newest)
   const lastDeals = deals.slice(0, 10).reverse();
