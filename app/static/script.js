@@ -24,6 +24,7 @@ function saveToAuditTrail(outcome, dealPrice, buyerMax){
     timestamp: new Date().toISOString(),
     startedAt: negotiationStartedAt,
     category: categoryId,
+    sellerMin: sellerMin,
     rounds: roundHistory,
     outcome,
     dealPrice: dealPrice || null,

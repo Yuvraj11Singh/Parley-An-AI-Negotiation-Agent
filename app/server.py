@@ -5,11 +5,12 @@ a time) — a deliberate simplification for a local demo, not intended for
 multiple concurrent users.
 """
 
+import csv
 import random
 import sys
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, abort, jsonify, request, send_from_directory
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
@@ -68,6 +69,46 @@ def desk():
 @app.route("/api/categories", methods=["GET"])
 def get_categories():
     return jsonify(CATEGORIES)
+
+
+@app.route("/api/session_status", methods=["GET"])
+def session_status():
+    state = session.get("state")
+    if state is None or state.done:
+        return jsonify({"active": False})
+    return jsonify({
+        "active": True,
+        "category": session.get("category"),
+        "round": state.round,
+    })
+
+
+TRAINING_LOGS = {
+    "v3": "train_randomized_v3.csv",
+    "v2": "train_randomized_v2.csv",
+    "v1": "train_randomized.csv",
+    "fixed_medium": "train_fixed_medium.csv",
+}
+
+
+@app.route("/api/training_log/<version>", methods=["GET"])
+def training_log(version):
+    filename = TRAINING_LOGS.get(version)
+    if not filename:
+        abort(404)
+    path = Path(__file__).resolve().parent.parent / "results" / filename
+    if not path.exists():
+        abort(404)
+    rows = []
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            rows.append({
+                "episode": int(row["episode"]),
+                "epsilon": float(row["epsilon"]),
+                "deal_rate": float(row["deal_rate"]),
+                "avg_surplus_captured": float(row["avg_surplus_captured"]) if row["avg_surplus_captured"] not in ("", "None") else None,
+            })
+    return jsonify(rows)
 
 
 @app.route("/api/new_negotiation", methods=["POST"])

@@ -6,6 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="app-frame">
@@ -24,6 +25,9 @@
       <button class="dash-nav-item" data-view="audit">
         <span class="dash-nav-icon">📜</span> Audit Trail
       </button>
+      <button class="dash-nav-item" data-view="insights">
+        <span class="dash-nav-icon">🧠</span> Agent Insights
+      </button>
     </nav>
     <div class="app-sidebar-foot">
       <div class="tag">LIVE AGENT · Q-LEARNING</div>
@@ -32,13 +36,92 @@
 
   <main class="app-content">
     <section id="view-dashboard" class="dash-view">
-      <h2>Agent Performance</h2>
+      <div class="home-greeting">
+        <h2 id="greetingText">Good morning</h2>
+        <p class="explain" id="greetingSub">Loading your activity…</p>
+        <div class="name-setter" id="nameSetter" style="display:none;">
+          <input type="text" id="nameInput" placeholder="What should we call you?">
+          <button id="nameSave" class="primary">Save</button>
+        </div>
+      </div>
+
+      <div class="home-top-row">
+        <div class="home-card">
+          <div class="home-card-label">Deal rate</div>
+          <div class="home-card-big" id="hcDealRate">—</div>
+          <div class="home-bar"><div class="home-bar-fill" id="hcDealBar" style="width:0%"></div></div>
+          <div class="home-card-sub" id="hcDealSub">No negotiations yet</div>
+        </div>
+        <div class="home-card">
+          <div class="home-card-label">Value captured</div>
+          <div class="home-card-big" id="hcValue">—</div>
+          <div class="home-card-sub" id="hcValueSub">Total margin above your minimums, across closed deals</div>
+        </div>
+        <div class="home-card">
+          <div class="home-card-label">In progress</div>
+          <div id="hcProgress" class="home-card-progress">
+            <span class="home-check">✓</span> You're all caught up
+          </div>
+        </div>
+      </div>
+
+      <div class="home-mini-row">
+        <div class="home-mini">
+          <div class="home-mini-head"><span>By category</span><span id="mcCatTotal"></span></div>
+          <canvas id="miniCategory" height="90"></canvas>
+        </div>
+        <div class="home-mini">
+          <div class="home-mini-head"><span>Activity this week</span><span id="mcWeekTotal"></span></div>
+          <canvas id="miniWeek" height="90"></canvas>
+        </div>
+        <div class="home-mini">
+          <div class="home-mini-head"><span>Success rate</span><span id="mcSuccessSub"></span></div>
+          <div class="donut-wrap"><canvas id="miniDonut" height="90"></canvas><div class="donut-center" id="donutCenter">—</div></div>
+        </div>
+        <div class="home-mini">
+          <div class="home-mini-head"><span>Rounds to close</span><span id="mcRoundsAvg"></span></div>
+          <canvas id="miniRounds" height="90"></canvas>
+        </div>
+      </div>
+
+      <div class="home-bottom-row">
+        <div class="home-panel">
+          <div class="home-panel-head"><span>Recent negotiations</span><button class="link-btn" id="allNegotiationsBtn">All negotiations →</button></div>
+          <div id="recentList" class="recent-list"></div>
+        </div>
+        <div class="home-panel">
+          <div class="home-panel-head"><span>Agent activity</span></div>
+          <div id="activityFeed" class="activity-feed"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-insights" class="dash-view" style="display:none;">
+      <h2>Agent Insights</h2>
       <p class="explain">Real cross-evaluation results for the current trained agent (v3), measured over 3,000 episodes per condition.</p>
       <div class="perf-grid">
         <div class="perf-card"><div class="perf-label">vs. Slow seller</div><div class="perf-val">58.2%<span>deal rate</span></div><div class="perf-sub">39.2% surplus captured</div></div>
         <div class="perf-card"><div class="perf-label">vs. Medium seller</div><div class="perf-val">83.9%<span>deal rate</span></div><div class="perf-sub">69.2% surplus captured</div></div>
         <div class="perf-card"><div class="perf-label">vs. Fast seller</div><div class="perf-val">86.6%<span>deal rate</span></div><div class="perf-sub">88.2% surplus captured</div></div>
         <div class="perf-card"><div class="perf-label">vs. Randomized seller</div><div class="perf-val">76.3%<span>deal rate</span></div><div class="perf-sub">71.7% surplus captured</div></div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-head">
+          <div>
+            <h3>Learning Curve</h3>
+            <p class="explain">How the agent improved over 30,000 self-play episodes. Deal rate and surplus captured climb as exploration (ε) decays.</p>
+          </div>
+          <select id="curveVersion" class="dash-select">
+            <option value="v3" selected>v3 (current)</option>
+            <option value="v2">v2</option>
+            <option value="v1">v1</option>
+            <option value="fixed_medium">fixed-schedule baseline</option>
+          </select>
+        </div>
+        <div class="chart-card">
+          <canvas id="learningCurve" height="110"></canvas>
+        </div>
       </div>
     </section>
 
