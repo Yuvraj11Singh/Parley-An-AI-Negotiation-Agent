@@ -8,50 +8,66 @@
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header>
-  <div>
-    <h1>Parley — Deal Desk</h1>
-    <div class="sub">You're the seller. Negotiate against a trained AI buyer.</div>
-  </div>
-  <div class="tag">LIVE AGENT · Q-LEARNING</div>
-</header>
-
-<div class="app-shell">
-  <aside class="stepper">
-    <div class="step" id="step-start" data-active="true">
-      <span class="step-num">1</span><span class="step-label">Start</span>
+<div class="app-frame">
+  <aside class="app-sidebar">
+    <div class="app-brand">
+      <div class="app-brand-name">Parley</div>
+      <div class="app-brand-sub">AI negotiation agent</div>
     </div>
-    <div class="step" id="step-negotiate">
-      <span class="step-num">2</span><span class="step-label">Negotiation</span>
-    </div>
-    <div class="step" id="step-outcome">
-      <span class="step-num">3</span><span class="step-label">Outcome</span>
+    <nav class="app-nav">
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📊</span> Dashboard</a>
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">🗂️</span> Categories</a>
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📜</span> Audit Trail</a>
+    </nav>
+    <div class="app-sidebar-foot">
+      <div class="tag">LIVE AGENT · Q-LEARNING</div>
     </div>
   </aside>
 
-  <main class="chat-col">
-    <div id="chatThread" class="chat-thread">
-      <div class="chat-empty" id="chatEmpty">
-        Start a negotiation to begin the conversation.
+  <main class="app-content">
+    <div class="desk-header">
+      <h1>Deal Desk</h1>
+      <div class="sub">You're the seller. Negotiate against a trained AI buyer.</div>
+    </div>
+    <div class="desk-body">
+      <aside class="stepper">
+        <div class="step" id="step-start" data-active="true">
+          <span class="step-num">1</span><span class="step-label">Start</span>
+        </div>
+        <div class="step" id="step-negotiate">
+          <span class="step-num">2</span><span class="step-label">Negotiation</span>
+        </div>
+        <div class="step" id="step-outcome">
+          <span class="step-num">3</span><span class="step-label">Outcome</span>
+        </div>
+      </aside>
+
+      <div class="chat-col">
+        <div id="chatThread" class="chat-thread">
+          <div class="chat-empty" id="chatEmpty">
+            Start a negotiation to begin the conversation.
+          </div>
+        </div>
+        <div class="chat-input-row" id="offerRow" style="display:none;">
+          <input type="number" id="askInput" placeholder="Enter your asking price">
+          <button id="sendBtn" class="primary">Send</button>
+        </div>
+        <button id="startBtn" class="primary" style="margin-top:8px;">Start negotiation</button>
+        <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
       </div>
-    </div>
-    <div class="chat-input-row" id="offerRow" style="display:none;">
-      <input type="number" id="askInput" placeholder="Enter your asking price">
-      <button id="sendBtn" class="primary">Send</button>
-    </div>
-    <button id="startBtn" class="primary" style="margin-top:8px;">Start negotiation</button>
-    <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
-  </main>
 
-  <aside class="proposal-panel">
-    <h3>Current Proposal</h3>
-    <div id="proposalCard" class="proposal-card">
-      <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+      <aside class="proposal-panel">
+        <h3>Current Proposal</h3>
+        <div id="proposalCard" class="proposal-card">
+          <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+        </div>
+      </aside>
     </div>
-  </aside>
+
+    <footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
+  </main>
 </div>
 
-<footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
 <script src="/static/script.js"></script>
 </body>
 </html>

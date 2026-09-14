@@ -16,11 +16,13 @@ const stepOutcome = document.getElementById('step-outcome');
 
 let sellerMin = null;
 let roundHistory = [];
+let negotiationStartedAt = null;
 
 function saveToAuditTrail(outcome, dealPrice, buyerMax){
   const record = {
     id: Date.now(),
     timestamp: new Date().toISOString(),
+    startedAt: negotiationStartedAt,
     category: categoryId,
     rounds: roundHistory,
     outcome,
@@ -86,8 +88,9 @@ async function startNegotiation(){
   const data = await res.json();
   sellerMin = data.seller_min;
   roundHistory = [];
+  negotiationStartedAt = new Date().toISOString();
 
-  document.querySelector('header h1').textContent = `Parley — ${data.category}`;
+  document.querySelector('.desk-header h1').textContent = `Deal Desk — ${data.category}`;
 
   chatThread.innerHTML = '';
   chatEmpty.style.display = 'none';
@@ -118,7 +121,7 @@ async function sendOffer(){
   }
 
   addRoundRow(data.round, val, data.buyer_offer);
-  roundHistory.push({ round: data.round, ask: val, offer: data.buyer_offer });
+  roundHistory.push({ round: data.round, ask: val, offer: data.buyer_offer, at: new Date().toISOString() });
 
   askInput.value = '';
 
