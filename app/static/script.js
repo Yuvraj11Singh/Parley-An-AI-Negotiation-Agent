@@ -25,7 +25,17 @@ let negotiationStartedAt = null;
 let maxRounds = 10;
 let itemId = urlParams.get('item');
 let itemName = null;
-let categoryId = null;
+let categoryId = urlParams.get('category');
+let referencePrice = null;
+
+let pendingItem = null;
+if (urlParams.get('custom') === '1'){
+  try {
+    pendingItem = JSON.parse(sessionStorage.getItem('parley_pending_item') || 'null');
+  } catch (e) {
+    pendingItem = null;
+  }
+}
 
 function saveToAuditTrail(outcome, dealPrice, buyerMax){
   const record = {
@@ -35,6 +45,7 @@ function saveToAuditTrail(outcome, dealPrice, buyerMax){
     category: categoryId,
     itemId: itemId,
     itemName: itemName,
+    referencePrice: referencePrice,
     sellerMin: sellerMin,
     rounds: roundHistory,
     outcome,
@@ -95,9 +106,19 @@ async function startNegotiation(){
   const res = await fetch('/api/new_negotiation', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ item: itemId })
+    body: JSON.stringify({ category: categoryId, item: pendingItem || itemId })
   });
   const data = await res.json();
+
+  if (data.error){
+    alert(data.error);
+    return;
+  }
+
+  // the pending custom-item payload is only meant to be used once
+  sessionStorage.removeItem('parley_pending_item');
+  pendingItem = null;
+
   sellerMin = data.seller_min;
   roundHistory = [];
   negotiationStartedAt = new Date().toISOString();
@@ -105,13 +126,15 @@ async function startNegotiation(){
   itemId = data.item.id;
   itemName = data.item.name;
   categoryId = data.category_id;
+  referencePrice = data.item.reference_price;
 
   document.querySelector('.desk-header h1').textContent = `Deal Desk — ${data.item.name}`;
 
   icName.textContent = data.item.name;
   icDesc.textContent = data.item.description;
-  icDetails.innerHTML = data.item.details.map(d => `<li>${d}</li>`).join('');
-  icRange.textContent = `$${data.item.min.toLocaleString()} – $${data.item.max.toLocaleString()}`;
+  icDetails.innerHTML = (data.item.details || []).map(d => `<li>${d}</li>`).join('');
+  const qtyPart = data.item.quantity ? `Qty ${data.item.quantity} · ` : '';
+  icRange.textContent = `${qtyPart}Reference price $${data.item.reference_price.toLocaleString()}`;
   itemCard.style.display = 'flex';
 
   chatThread.innerHTML = '';

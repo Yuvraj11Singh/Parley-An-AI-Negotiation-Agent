@@ -605,3 +605,23 @@ a.primary:active{ transform:scale(0.98); }
 
 .item-card-side{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; display:flex; flex-direction:column; gap:8px; }
 .item-card-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim); font-weight:600; }
+
+.modal-backdrop{ position:fixed; inset:0; background:rgba(45,49,66,0.35); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px; }
+.modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; width:100%; max-width:620px; padding:22px 24px; box-shadow:0 20px 60px rgba(45,49,66,0.18); animation: fadeUp .25s ease-out; }
+.modal-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+.modal-kicker{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim); font-weight:600; }
+.modal-head h3{ font-family:var(--heading); font-weight:600; font-size:20px; margin:2px 0 0; color:var(--ink); }
+.modal-close{ background:none; border:none; font-size:22px; line-height:1; color:var(--ink-dim); cursor:pointer; padding:4px 8px; }
+.modal-close:hover{ color:var(--ink); background:none; border:none; }
+.modal-label{ font-size:11.5px; color:var(--ink-dim); font-weight:600; margin-bottom:8px; }
+.quickfill-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.quickfill-chip{ font-size:12px; padding:6px 12px; border-radius:20px; border:1px solid var(--line-bright); background:var(--panel-2); color:var(--ink); cursor:pointer; }
+.quickfill-chip:hover{ border-color:var(--accent); background:var(--accent-soft); }
+.modal-form{ display:flex; flex-direction:column; gap:12px; }
+.modal-form label{ display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; color:var(--ink-dim); }
+.modal-form input, .modal-form textarea{ font-family:var(--sans); font-size:13px; color:var(--ink); background:var(--panel-2); border:1px solid var(--line-bright); border-radius:8px; padding:9px 12px; resize:vertical; }
+.modal-form input:focus, .modal-form textarea:focus{ outline:none; border-color:var(--accent); background:#fff; }
+.modal-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-hint{ font-size:11.5px; color:var(--ink-dim); font-weight:400; }
+.modal-error{ font-size:12px; color:var(--walk); background:var(--walk-soft); border-radius:8px; padding:8px 12px; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }

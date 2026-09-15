@@ -128,13 +128,12 @@ def session_status():
     state = session.get("state")
     if state is None or state.done:
         return jsonify({"active": False})
-    item_id = session.get("item")
-    item = ITEMS.get(item_id)
+    item = session.get("item") or {}
     return jsonify({
         "active": True,
         "category": session.get("category"),
-        "item": item_id,
-        "item_name": item["name"] if item else None,
+        "item": item.get("id"),
+        "item_name": item.get("name"),
         "round": state.round,
     })
 
@@ -172,16 +171,46 @@ def training_log(version):
 @app.route("/api/new_negotiation", methods=["POST"])
 def new_negotiation():
     data = request.get_json(silent=True) or {}
-    item_id = data.get("item", DEFAULT_ITEM)
-    item = ITEMS.get(item_id, ITEMS[DEFAULT_ITEM])
-    if item_id not in ITEMS:
-        item_id = DEFAULT_ITEM
-    category_id = item["category"]
-    cat = CATEGORIES.get(category_id, CATEGORIES[category_id])
+    raw_item = data.get("item")
+    category_id = data.get("category")
 
-    seller_min = random.uniform(item["min"], item["max"])
-    buyer_max = random.uniform(item["min"] * 1.15, item["max"] * 1.3)
-    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, item["max"] * 0.05))
+    if isinstance(raw_item, dict):
+        # custom item defined via the modal
+        name = (raw_item.get("name") or "").strip()
+        if not name:
+            return jsonify({"error": "item name is required"}), 400
+        try:
+            reference_price = float(raw_item.get("reference_price"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "reference price must be a positive number"}), 400
+        if reference_price <= 0:
+            return jsonify({"error": "reference price must be a positive number"}), 400
+
+        item_id = None
+        item_name = name
+        item_description = raw_item.get("description") or ""
+        item_details = raw_item.get("details") or []
+        item_quantity = raw_item.get("quantity")
+        if category_id not in CATEGORIES:
+            category_id = ITEMS[DEFAULT_ITEM]["category"]
+    else:
+        # old-style catalog item id (string), or missing -> fall back to the default item
+        item_key = raw_item if isinstance(raw_item, str) and raw_item in ITEMS else DEFAULT_ITEM
+        catalog_item = ITEMS[item_key]
+        item_id = item_key
+        item_name = catalog_item["name"]
+        item_description = catalog_item["description"]
+        item_details = catalog_item["details"]
+        item_quantity = None
+        reference_price = (catalog_item["min"] + catalog_item["max"]) / 2
+        category_id = catalog_item["category"]
+
+    cat = CATEGORIES.get(category_id, CATEGORIES[ITEMS[DEFAULT_ITEM]["category"]])
+
+    lo, hi = reference_price * 0.80, reference_price * 1.20
+    seller_min = random.uniform(lo, hi)
+    buyer_max = random.uniform(lo * 1.15, hi * 1.30)
+    buyer_offer = max(0.0, buyer_max * 0.35 + random.uniform(0, hi * 0.05))
 
     state = NegotiationState(
         buyer_max=buyer_max,
@@ -189,24 +218,25 @@ def new_negotiation():
         buyer_offer=buyer_offer,
         seller_ask=buyer_offer,  # placeholder until the human sends a real ask
     )
+    item_payload = {
+        "id": item_id,
+        "name": item_name,
+        "description": item_description,
+        "details": item_details,
+        "quantity": item_quantity,
+        "reference_price": reference_price,
+    }
     session["state"] = state
     session["seller_min"] = seller_min
     session["category"] = category_id
-    session["item"] = item_id
+    session["item"] = item_payload
 
     return jsonify({
         "seller_min": round(seller_min, 1),
         "category": cat["name"],
         "category_id": category_id,
         "max_rounds": MAX_ROUNDS,
-        "item": {
-            "id": item_id,
-            "name": item["name"],
-            "description": item["description"],
-            "details": item["details"],
-            "min": item["min"],
-            "max": item["max"],
-        },
+        "item": item_payload,
         **_serialize(state)
     })
 
