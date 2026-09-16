@@ -25,9 +25,6 @@
       <button class="dash-nav-item" data-view="audit">
         <span class="dash-nav-icon">📜</span> Audit Trail
       </button>
-      <button class="dash-nav-item" data-view="campaigns">
-        <span class="dash-nav-icon">🎯</span> Campaigns
-      </button>
       <button class="dash-nav-item" data-view="insights">
         <span class="dash-nav-icon">🧠</span> Agent Insights
       </button>
@@ -220,49 +217,10 @@
         </div>
       </div>
     </section>
-
-    <section id="view-campaigns" class="dash-view" style="display:none;">
-      <h2>Campaigns</h2>
-      <p class="explain">Launch several negotiations for one item at once. Claim one to play yourself — the rest run autonomously with the trained agent.</p>
-      <button id="newCampaignBtn" class="primary" style="margin-bottom:18px;">+ New campaign</button>
-      <button id="clearCampaignsBtn" style="margin-left:8px;">Clear all</button>
-      <div id="campaignList" class="recent-list"></div>
-      <div id="campaignDetail" class="audit-detail" style="display:none; margin-top:18px;"></div>
-    </section>
-
-    <div id="campaignModal" class="modal-backdrop" style="display:none;">
-      <div class="modal">
-        <div class="modal-head">
-          <div><div class="modal-kicker">New campaign</div><h3>Batch negotiate one item</h3></div>
-          <button class="modal-close" id="campaignModalClose">×</button>
-        </div>
-        <div class="modal-form">
-          <label>Category
-            <select id="cmCategory"></select>
-          </label>
-          <div class="modal-label" style="margin-top:4px;">Quick-fill an example (optional)</div>
-          <div id="cmQuickfillRow" class="quickfill-row"></div>
-          <label>Item name<input type="text" id="cmName"></label>
-          <label>Reference price ($)<input type="number" id="cmRef" min="1" step="1"></label>
-          <div class="modal-row">
-            <label>Total negotiations<input type="number" id="cmCount" min="2" max="25" value="5"></label>
-            <label style="justify-content:center; flex-direction:row; align-items:center; gap:8px; font-weight:500;">
-              <input type="checkbox" id="cmPlayOne" style="width:auto;"> I'll personally negotiate one of these
-            </label>
-          </div>
-          <div id="cmError" class="modal-error" style="display:none;"></div>
-        </div>
-        <div class="modal-actions">
-          <button id="campaignCancel">Cancel</button>
-          <button id="campaignLaunch" class="primary">Launch campaign →</button>
-        </div>
-      </div>
-    </div>
   </main>
 </div>
 
 <script src="/static/categories.js"></script>
 <script src="/static/dashboard.js"></script>
-<script src="/static/campaigns.js"></script>
 </body>
 </html>
