@@ -184,11 +184,20 @@
           </div>
           <div class="modal-hint">Reference price is the expected market price for the whole order. The negotiation's real prices are randomized around it.</div>
           <div id="mfError" class="modal-error" style="display:none;"></div>
+          <div id="mfPolicyWarning" class="modal-policy-warning" style="display:none;">
+            <div class="modal-policy-icon">⚠</div>
+            <div class="modal-policy-text"><strong>Policy check</strong><div id="mfPolicyText"></div></div>
+          </div>
         </div>
 
         <div class="modal-actions">
           <button id="modalCancel">Cancel</button>
           <button id="modalStart" class="primary">Start negotiation →</button>
+        </div>
+
+        <div id="modalPolicyActions" class="modal-actions" style="display:none;">
+          <button id="modalFixIt">Fix the price</button>
+          <button id="modalProceedAnyway" class="primary-soft">Proceed anyway →</button>
         </div>
       </div>
     </div>
