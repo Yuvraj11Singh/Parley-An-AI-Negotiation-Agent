@@ -123,6 +123,10 @@ document.querySelectorAll('.dash-nav-item').forEach(item => {
   }
 });
 
+document.querySelectorAll('.dash-nav-item').forEach(item => {
+  if (item.dataset.view === 'campaigns') item.addEventListener('click', () => loadCampaigns());
+});
+
 let learningChart = null;
 
 async function loadLearningCurve(version = 'v3'){

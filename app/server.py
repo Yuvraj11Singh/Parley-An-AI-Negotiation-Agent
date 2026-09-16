@@ -14,7 +14,8 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
-from src.environment import MAX_ROUNDS, NegotiationState, deal_tolerance
+from src.environment import MAX_ROUNDS, NegotiationEnv, NegotiationState, deal_tolerance
+from src.opponent import RandomizedSeller
 
 app = Flask(__name__, static_folder="static")
 
@@ -239,6 +240,44 @@ def new_negotiation():
         "item": item_payload,
         **_serialize(state)
     })
+
+
+@app.route("/api/campaign/simulate", methods=["POST"])
+def campaign_simulate():
+    data = request.get_json(silent=True) or {}
+    item = data.get("item") or {}
+    count = int(data.get("count", 0))
+    try:
+        ref = float(item.get("reference_price"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid reference price"}), 400
+    if ref <= 0 or count <= 0:
+        return jsonify({"error": "invalid reference price or count"}), 400
+    count = min(count, 25)  # sane upper bound per request
+
+    lo, hi = ref * 0.80, ref * 1.20
+    buyer_range = (lo * 1.15, hi * 1.30)
+    seller_range = (lo, hi)
+
+    results = []
+    for _ in range(count):
+        env = NegotiationEnv(RandomizedSeller(), buyer_max_range=buyer_range, seller_min_range=seller_range)
+        state = env.reset()
+        while not state.done:
+            state, _ = env.step(agent.act(state, greedy=True))
+        rounds_out = [
+            {"round": r, "ask": round(sask, 1), "offer": round(boffer, 1)}
+            for (r, boffer, sask, _status) in state.history
+        ]
+        results.append({
+            "outcome": state.outcome,
+            "dealPrice": round(state.deal_price, 1) if state.deal_price else None,
+            "buyerMax": round(state.buyer_max, 1),
+            "sellerMin": round(state.seller_min, 1),
+            "rounds": rounds_out,
+        })
+
+    return jsonify({"results": results})
 
 
 @app.route("/api/offer", methods=["POST"])

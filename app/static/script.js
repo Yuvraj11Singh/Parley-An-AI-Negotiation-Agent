@@ -56,6 +56,17 @@ function saveToAuditTrail(outcome, dealPrice, buyerMax){
   existing.unshift(record);
   if (existing.length > 50) existing.length = 50; // cap stored history
   localStorage.setItem('parley_audit_trail', JSON.stringify(existing));
+
+  const urlCampaignId = new URLSearchParams(window.location.search).get('campaignId');
+  if (urlCampaignId){
+    const campaigns = JSON.parse(localStorage.getItem('parley_campaigns') || '[]');
+    const idx = campaigns.findIndex(c => c.id === Number(urlCampaignId));
+    if (idx !== -1){
+      campaigns[idx].humanResult = { outcome, dealPrice, buyerMax, rounds: roundHistory };
+      campaigns[idx].status = 'complete';
+      localStorage.setItem('parley_campaigns', JSON.stringify(campaigns));
+    }
+  }
 }
 
 function setStep(name){
@@ -189,6 +200,16 @@ async function sendOffer(){
     addStatusMsg(cls, html);
     updateProposal(data.round, val, data.buyer_offer, data.outcome.toUpperCase(), cls);
     saveToAuditTrail(data.outcome, data.deal_price, data.buyer_max);
+
+    const urlCampaignId = new URLSearchParams(window.location.search).get('campaignId');
+    if (urlCampaignId){
+      const backDiv = document.createElement('div');
+      backDiv.style.textAlign = 'center';
+      backDiv.style.marginTop = '4px';
+      backDiv.innerHTML = `<a class="link-btn" href="/dashboard">← Back to campaign results</a>`;
+      chatThread.appendChild(backDiv);
+      chatThread.scrollTop = chatThread.scrollHeight;
+    }
   } else {
     updateProposal(data.round, val, data.buyer_offer, 'In progress');
     askInput.focus();
