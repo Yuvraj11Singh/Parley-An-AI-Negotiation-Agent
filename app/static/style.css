@@ -637,3 +637,18 @@ button.primary-soft{
   background:var(--timeout); border-color:var(--timeout); color:#3a2a05; font-weight:700;
 }
 button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
+
+/* expandable campaign run rows (accordion) */
+.audit-entry{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  margin-bottom:8px; overflow:hidden;
+}
+.audit-entry-header{
+  display:flex; align-items:center; gap:14px; padding:13px 16px; cursor:pointer;
+}
+.audit-entry-header:hover{ background:var(--panel-2); }
+.audit-entry-cat{ font-family:var(--heading); font-weight:500; font-size:13.5px; color:var(--ink); flex:1; }
+.audit-entry-detail{
+  display:none; padding:0 16px 16px; flex-direction:column; gap:6px;
+}
+.audit-entry.expanded .audit-entry-detail{ display:flex; }

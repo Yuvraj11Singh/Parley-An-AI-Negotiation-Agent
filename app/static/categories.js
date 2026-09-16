@@ -22,6 +22,25 @@ const modalProceedAnyway = document.getElementById('modalProceedAnyway');
 let CATALOG = { categories: {}, items: {} };
 let categoryBands = {};
 let activeCategoryId = null;
+let quickfillItems = []; // reset and repopulated each time the modal opens for a category
+
+function renderQuickfill(categoryId){
+  quickfillItems = Object.values(CATALOG.items).filter(i => i.category === categoryId);
+  quickfillRow.innerHTML = quickfillItems.map((item, idx) =>
+    `<button type="button" class="quickfill-chip" data-idx="${idx}">${item.name}</button>`
+  ).join('');
+  quickfillRow.querySelectorAll('.quickfill-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const item = quickfillItems[Number(chip.dataset.idx)];
+      mfName.value = item.name;
+      mfDesc.value = item.description || '';
+      mfDetails.value = (item.details || []).join('\n');
+      const qtyMatch = item.name.match(/—\s*(\d+)/);
+      mfQty.value = qtyMatch ? qtyMatch[1] : '';
+      mfRef.value = Math.round((item.min + item.max) / 2);
+    });
+  });
+}
 
 function computeCategoryBands(items){
   const bands = {};
@@ -87,25 +106,7 @@ function openModal(categoryId){
   clearError();
   resetPolicyWarning();
 
-  const items = Object.keys(CATALOG.items)
-    .filter(id => CATALOG.items[id].category === categoryId)
-    .map(id => ({ id, ...CATALOG.items[id] }));
-
-  quickfillRow.innerHTML = items.map(item => `
-    <button type="button" class="quickfill-chip" data-item-id="${item.id}">${item.name}</button>
-  `).join('');
-
-  quickfillRow.querySelectorAll('.quickfill-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const item = CATALOG.items[chip.dataset.itemId];
-      mfName.value = item.name;
-      mfDesc.value = item.description;
-      mfDetails.value = item.details.join('\n');
-      const qtyMatch = item.name.match(/—\s*(\d+)\s*units?/i);
-      mfQty.value = qtyMatch ? qtyMatch[1] : '';
-      mfRef.value = Math.round((item.min + item.max) / 2);
-    });
-  });
+  renderQuickfill(categoryId);
 
   modal.style.display = 'flex';
 }

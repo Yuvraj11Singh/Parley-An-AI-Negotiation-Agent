@@ -12,15 +12,20 @@ async function loadCategoryData(){
   }
 }
 
+let cmQuickfillItems = [];
+
 function renderCmQuickfill(){
   const catId = document.getElementById('cmCategory').value;
+  cmQuickfillItems = Object.values(allItems).filter(i => i.category === catId);
   const row = document.getElementById('cmQuickfillRow');
-  const items = Object.values(allItems).filter(i => i.category === catId);
-  row.innerHTML = items.map(i => `<button type="button" class="quickfill-chip" data-name="${i.name}" data-ref="${Math.round((i.min+i.max)/2)}">${i.name}</button>`).join('');
+  row.innerHTML = cmQuickfillItems.map((item, idx) =>
+    `<button type="button" class="quickfill-chip" data-idx="${idx}">${item.name}</button>`
+  ).join('');
   row.querySelectorAll('.quickfill-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      document.getElementById('cmName').value = chip.dataset.name;
-      document.getElementById('cmRef').value = chip.dataset.ref;
+      const item = cmQuickfillItems[Number(chip.dataset.idx)];
+      document.getElementById('cmName').value = item.name;
+      document.getElementById('cmRef').value = Math.round((item.min + item.max) / 2);
     });
   });
 }
@@ -121,6 +126,29 @@ function loadCampaigns(){
   }));
 }
 
+function renderCampaignRun(r, idx){
+  const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice}` : r.outcome === 'walk' ? 'Walked' : 'Timed out';
+  const badgeClass = r.outcome === 'deal' ? 'deal' : r.outcome === 'walk' ? 'walk' : 'timeout';
+  const roundsHtml = r.rounds.map(row => `
+    <div class="round-row">
+      <div class="round-badge">${row.round}</div>
+      <div class="side seller-side"><div class="label">Ask</div><div class="value">${row.ask}</div></div>
+      <div class="arrow">⇌</div>
+      <div class="side buyer-side"><div class="label">Offer</div><div class="value">${row.offer}</div></div>
+    </div>
+  `).join('');
+  return `
+    <div class="audit-entry">
+      <div class="audit-entry-header">
+        <span class="audit-entry-cat">Run ${idx+1} — ${r.who}</span>
+        <span class="audit-item-rounds">${r.rounds.length} rounds · buyer max ${r.buyerMax}</span>
+        <span class="audit-badge ${badgeClass}">${outcomeLabel}</span>
+      </div>
+      <div class="audit-entry-detail">${roundsHtml}</div>
+    </div>
+  `;
+}
+
 function showCampaignDetail(id){
   const campaigns = JSON.parse(localStorage.getItem('parley_campaigns') || '[]');
   const c = campaigns.find(x => x.id === id);
@@ -137,16 +165,18 @@ function showCampaignDetail(id){
       <div class="perf-card"><div class="perf-label">Avg savings/deal</div><div class="perf-val">$${Math.round(stats.avgSaving).toLocaleString()}</div></div>
       <div class="perf-card"><div class="perf-label">Avg rounds to close</div><div class="perf-val">${stats.avgRounds.toFixed(1)}</div></div>
     </div>
-    ${all.map((r,i) => `
-      <div class="audit-item" style="cursor:default;">
-        <div class="audit-item-top">
-          <span class="audit-item-cat">Run ${i+1} — ${r.who}</span>
-          <span class="audit-badge ${r.outcome === 'deal' ? 'deal' : r.outcome === 'walk' ? 'walk' : 'timeout'}">${r.outcome === 'deal' ? 'Deal @ '+r.dealPrice : r.outcome === 'walk' ? 'Walked' : 'Timed out'}</span>
-        </div>
-        <div class="audit-item-bottom"><span class="audit-item-rounds">${r.rounds.length} rounds · buyer max ${r.buyerMax}</span></div>
-      </div>
-    `).join('')}
+    ${all.map((r,i) => renderCampaignRun(r,i)).join('')}
   `;
+  detail.querySelectorAll('.audit-entry-header').forEach(header => {
+    header.addEventListener('click', () => header.parentElement.classList.toggle('expanded'));
+  });
 }
+
+document.getElementById('clearCampaignsBtn')?.addEventListener('click', () => {
+  if (!confirm('Remove all campaign history? This cannot be undone.')) return;
+  localStorage.removeItem('parley_campaigns');
+  document.getElementById('campaignDetail').style.display = 'none';
+  loadCampaigns();
+});
 
 loadCategoryData();
