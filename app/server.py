@@ -19,7 +19,7 @@ from src.environment import MAX_ROUNDS, NegotiationState, deal_tolerance
 app = Flask(__name__, static_folder="static")
 
 agent = QLearningAgent()
-agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v5.json"))
+agent.load(str(Path(__file__).resolve().parent.parent / "models" / "buyer_randomized_v6.json"))
 
 session = {"state": None, "seller_min": None}
 
@@ -139,6 +139,7 @@ def session_status():
 
 
 TRAINING_LOGS = {
+    "v6": "train_randomized_v6.csv",
     "v5": "train_randomized_v5.csv",
     "v4": "train_randomized_v4.csv",
     "v3": "train_randomized_v3.csv",

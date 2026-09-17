@@ -25,7 +25,7 @@ class NegotiationState:
 
 import random
 
-ACTIONS = [0.0, 0.1, 0.2, 0.3, 0.45, 0.6, "WALK"]
+ACTIONS = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, "WALK"]
 MAX_ROUNDS = 15
 
 # Deal-closing tolerance, expressed as a fraction of the buyer's own max

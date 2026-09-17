@@ -178,7 +178,7 @@ let insightsLoaded = false;
 document.querySelectorAll('.dash-nav-item').forEach(item => {
   if (item.dataset.view === 'insights'){
     item.addEventListener('click', () => {
-      if (!insightsLoaded){ loadLearningCurve('v5'); insightsLoaded = true; }
+      if (!insightsLoaded){ loadLearningCurve('v6'); insightsLoaded = true; }
     });
   }
 });

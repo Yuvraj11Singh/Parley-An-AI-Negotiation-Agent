@@ -1,0 +1,22 @@
+{
+  "fixed_slow": {
+    "deal_rate": 0.7096666666666667,
+    "avg_surplus_captured": 0.44206180332048145
+  },
+  "fixed_medium": {
+    "deal_rate": 0.8363333333333334,
+    "avg_surplus_captured": 0.7816014390928935
+  },
+  "fixed_fast": {
+    "deal_rate": 0.894,
+    "avg_surplus_captured": 0.832054347116246
+  },
+  "randomized": {
+    "deal_rate": 0.8263333333333334,
+    "avg_surplus_captured": 0.716545069210754
+  },
+  "mixed": {
+    "deal_rate": 0.8023333333333333,
+    "avg_surplus_captured": 0.6759357406523173
+  }
+}
