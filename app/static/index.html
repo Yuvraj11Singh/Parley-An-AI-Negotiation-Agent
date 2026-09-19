@@ -19,27 +19,62 @@
     <div class="landing-tagline reveal" style="--delay:0.2s">Where deals get done.</div>
     <p class="landing-sub reveal" style="--delay:0.3s">An AI negotiation agent, trained via reinforcement learning across real procurement categories — electronics, vehicles, real estate, and more. Define what you're buying, and watch it negotiate in real time.</p>
     <div class="landing-credibility reveal" style="--delay:0.35s">Trained via 60,000+ self-play negotiations · Agent v6</div>
-    <div class="stat-chip-row reveal" style="--delay:0.38s">
-      <div class="stat-chip"><b>82%</b><span>Deal rate</span></div>
-      <div class="stat-chip"><b>70%</b><span>Surplus captured</span></div>
-      <div class="stat-chip"><b>15</b><span>Max rounds</span></div>
-    </div>
     <a href="/dashboard" class="btn-primary-large reveal" style="--delay:0.4s">
       <span>Start Negotiating</span>
     </a>
   </div>
 
   <div class="hero-right reveal" style="--delay:0.5s">
+    <div class="hero-preview-kicker">
+      <span class="tag">AI NEGOTIATION AGENT</span>
+      <span class="hero-preview-kicker-sub">Negotiating on your behalf</span>
+    </div>
     <div class="window-chrome">
       <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
-      <span class="window-title"><span class="live-dot"></span>LIVE REPLAY · V6</span>
+      <span class="window-title"><span class="hero-status-dot" id="heroStatusDot"></span><span id="heroStatusText">● NEGOTIATING</span></span>
+      <span class="illustrative-tag">SAMPLE SEQUENCE</span>
     </div>
     <div class="ticker-panel">
       <div class="ticker-scenario-wrap">
-        <div id="tickerStage" class="ticker-stage"></div>
+        <div id="heroPreviewStage" class="ticker-stage"></div>
         <div class="ticker-fade"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<h3 class="beyond-heading" style="margin-top:0;">Live replay</h3>
+<div class="live-replay-strip" data-reveal>
+  <div class="window-chrome">
+    <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+    <span class="window-title"><span class="live-dot"></span>LIVE REPLAY · V6</span>
+  </div>
+  <div class="ticker-panel">
+    <div class="ticker-scenario-wrap">
+      <div id="tickerStage" class="ticker-stage"></div>
+      <div class="ticker-fade"></div>
+    </div>
+  </div>
+</div>
+
+<h3 class="beyond-heading" style="margin-top:50px;">Parley at a glance</h3>
+<div class="glance-strip" data-reveal>
+  <div class="glance-item">
+    <div class="glance-num">60,000+</div>
+    <div class="glance-label">Self-play negotiations</div>
+  </div>
+  <div class="glance-item">
+    <div class="glance-num">10</div>
+    <div class="glance-label">Procurement categories</div>
+  </div>
+  <div class="glance-item">
+    <div class="glance-num">84.6%</div>
+    <div class="glance-label">Deal rate vs. randomized opponent</div>
+    <div class="glance-sub">71.4% surplus captured · held-out eval</div>
+  </div>
+  <div class="glance-item">
+    <div class="glance-num">Multi-strategy</div>
+    <div class="glance-label">Negotiation policies</div>
   </div>
 </div>
 
@@ -64,18 +99,24 @@
 
 <div class="beyond-section">
   <h3 class="beyond-heading">Beyond the negotiation</h3>
-  <div class="beyond-grid">
+  <p class="beyond-subcopy">Every deal leaves intelligence behind — surfaced across the product, not locked in a single transcript.</p>
+  <div class="beyond-flow">
     <div class="beyond-card" data-reveal>
+      <div class="beyond-stage-num">1</div>
       <div class="beyond-icon">📊</div>
       <div class="beyond-title">Live Dashboard</div>
       <div class="beyond-desc">Your deal rate, savings secured, and recent activity at a glance.</div>
     </div>
+    <div class="beyond-arrow" aria-hidden="true">↓</div>
     <div class="beyond-card" data-reveal>
+      <div class="beyond-stage-num">2</div>
       <div class="beyond-icon">📜</div>
       <div class="beyond-title">Full Audit Trail</div>
       <div class="beyond-desc">Every negotiation, every round, timestamped and searchable.</div>
     </div>
+    <div class="beyond-arrow" aria-hidden="true">↓</div>
     <div class="beyond-card" data-reveal>
+      <div class="beyond-stage-num">3</div>
       <div class="beyond-icon">🧠</div>
       <div class="beyond-title">Agent Insights</div>
       <div class="beyond-desc">The real learning curve — deal rate and surplus climbing over 60,000 training episodes.</div>
@@ -85,6 +126,7 @@
 
 <footer>Every replay above is a real transcript from testing the trained agent — not scripted or invented.</footer>
 <script src="/static/ticker.js"></script>
+<script src="/static/hero-preview.js"></script>
 <script src="/static/landing.js"></script>
 </body>
 </html>
