@@ -53,7 +53,7 @@ html:has(.landing-nav){ scroll-behavior:smooth; }
 /* full-bleed app shell */
 html, body{ height:100%; }
 body:has(.app-frame){ padding:0; margin:0; }
-body:has(.landing-nav){ padding-top:0; }
+body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
 
 .app-frame{
   display:grid; grid-template-columns: 240px 1fr;
@@ -242,10 +242,18 @@ body:has(.landing){
 }
 .landing-nav-links{ display:flex; align-items:center; gap:28px; }
 .landing-nav-links a{
+  position:relative; padding-bottom:3px;
   font-family:var(--sans); font-size:13.5px; font-weight:500; color:var(--ink-dim);
   text-decoration:none; transition:color .15s;
 }
+.landing-nav-links a::after{
+  content:''; position:absolute; left:0; right:100%; bottom:0; height:2px;
+  background:var(--accent); border-radius:2px; transition:right .2s ease;
+}
 .landing-nav-links a:hover{ color:var(--ink); }
+.landing-nav-links a:hover::after{ right:0; }
+.landing-nav-links a.active{ color:var(--accent); font-weight:600; }
+.landing-nav-links a.active::after{ right:0; }
 .landing-nav-cta.btn-primary-large{
   padding:9px 20px; font-size:13px; margin-top:0; flex-shrink:0;
   box-shadow:0 2px 8px rgba(124,131,240,0.25);
@@ -349,6 +357,7 @@ body:has(.landing){
 .hero-status-dot{
   width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0;
   box-shadow:0 0 0 0 rgba(124,131,240,0.5); animation: pulseAccent 1.4s infinite;
+  transition: background-color .3s ease;
 }
 .hero-status-dot.deal-closed{ background:var(--deal); animation:none; box-shadow:none; }
 @keyframes pulseAccent{
@@ -357,8 +366,16 @@ body:has(.landing){
   100%{ box-shadow:0 0 0 0 rgba(124,131,240,0); }
 }
 
-.hero-round{ position:relative; margin-top:10px; }
+#heroPreviewStage{ transition: opacity .38s ease; }
+#heroPreviewStage.hero-fade-out{ opacity:0; }
+
+.hero-round{
+  position:relative; margin-top:10px;
+  transition: box-shadow .25s ease, border-color .25s ease;
+}
 .hero-round:first-child{ margin-top:0; }
+.hero-round.current{ border-color:var(--accent-dim); box-shadow:0 0 0 1px var(--accent-dim); }
+.hero-round.current.current-deal{ border-color:var(--deal); box-shadow:0 0 0 1px var(--deal); }
 .hero-stage-tag{
   position:absolute; top:-9px; right:14px; z-index:1;
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.5px;
@@ -817,9 +834,17 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
   .beyond-arrow{ display:flex; justify-content:center; color:var(--ink-dim); font-size:16px; margin:-2px 0; }
 }
 
-/* final CTA + landing-specific footer */
+/* final CTA + landing-specific footer, sharing one soft "closing band" */
+.closing-band{ position:relative; margin-top:80px; }
+.closing-band::before{
+  content:''; position:absolute; top:-10%; left:50%; transform:translateX(-50%);
+  width:min(900px, 90vw); height:340px;
+  background: radial-gradient(60% 60% at 50% 30%, rgba(124,131,240,0.10), transparent 72%);
+  filter: blur(20px); z-index:-1; pointer-events:none;
+}
+
 .final-cta{
-  max-width:560px; margin:80px auto 0; padding:0 20px; text-align:center; opacity:0;
+  max-width:560px; margin:0 auto; padding:64px 20px 0; text-align:center; opacity:0;
 }
 .final-cta.reveal-in{ animation: fadeUp 0.5s ease-out forwards; }
 .final-cta-title{
@@ -827,10 +852,10 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
   color:var(--ink); margin:0 0 10px; letter-spacing:-0.01em;
 }
 .final-cta-sub{ color:var(--ink-dim); font-size:15px; margin:0 0 26px; line-height:1.6; }
+.final-cta .btn-primary-large{ box-shadow: 0 8px 24px rgba(124,131,240,0.35); }
 
 .landing-footer{
-  max-width:1180px; margin:64px auto 0; padding:22px 20px 28px;
-  border-top:1px solid var(--line);
+  max-width:1180px; margin:56px auto 0; padding:0 20px 28px;
   display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
 }
 .landing-footer-brand{ display:flex; flex-direction:column; gap:2px; }
@@ -853,7 +878,9 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
     animation:none !important; transition:none !important;
     opacity:1 !important; transform:none !important;
   }
-  .orb-1, .orb-2, .orb-3, .live-dot, .ticker-row, .btn-primary-large::after, .hero-status-dot{
+  .orb-1, .orb-2, .orb-3, .live-dot, .ticker-row, .btn-primary-large::after, .hero-status-dot,
+  #heroPreviewStage, .hero-round{
     animation:none !important; transition:none !important;
   }
+  #heroPreviewStage.hero-fade-out{ opacity:1 !important; }
 }

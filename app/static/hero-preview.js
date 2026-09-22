@@ -42,35 +42,54 @@ function setHeroStatus(closed){
   }
 }
 
-function playHeroSequenceOnce(onDone){
-  heroStage.innerHTML = '';
+// Marks the just-appended round as the "current" one (subtle ring), moving
+// the highlight off whichever row held it before.
+function markCurrent(row, isDeal){
+  const prev = heroStage.querySelector('.hero-round.current');
+  if (prev) prev.classList.remove('current', 'current-deal');
+  row.classList.add('current');
+  if (isDeal) row.classList.add('current-deal');
+}
+
+function playHeroSequenceOnce(){
   setHeroStatus(false);
   let i = 0;
   function next(){
-    heroStage.appendChild(heroRow(HERO_ROUNDS[i]));
+    const row = heroRow(HERO_ROUNDS[i]);
+    heroStage.appendChild(row);
     heroStage.scrollTop = heroStage.scrollHeight;
+    markCurrent(row, HERO_ROUNDS[i].stage === 'deal');
     i++;
     if (i < HERO_ROUNDS.length){
       setTimeout(next, 700);
     } else {
       setTimeout(() => {
         setHeroStatus(true);
-        setTimeout(onDone, 2400);
+        setTimeout(fadeOutAndRestart, 2400);
       }, 550);
     }
   }
   next();
 }
 
-function loopHeroSequence(){
-  playHeroSequenceOnce(() => setTimeout(loopHeroSequence, 500));
+// Cross-fades the stage out, clears it, then starts the next pass — avoids
+// the abrupt "wipe" of an instant reset between loops.
+function fadeOutAndRestart(){
+  heroStage.classList.add('hero-fade-out');
+  setTimeout(() => {
+    heroStage.innerHTML = '';
+    heroStage.classList.remove('hero-fade-out');
+    playHeroSequenceOnce();
+  }, 380);
 }
 
 if (heroStage){
   if (prefersReducedMotion){
-    HERO_ROUNDS.forEach(r => heroStage.appendChild(heroRow(r)));
+    let lastRow = null;
+    HERO_ROUNDS.forEach(r => { lastRow = heroRow(r); heroStage.appendChild(lastRow); });
     setHeroStatus(true);
+    if (lastRow) lastRow.classList.add('current', 'current-deal');
   } else {
-    loopHeroSequence();
+    playHeroSequenceOnce();
   }
 }
