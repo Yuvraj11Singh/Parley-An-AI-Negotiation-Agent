@@ -8,6 +8,18 @@
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+<nav class="landing-nav">
+  <div class="landing-nav-inner">
+    <a href="/" class="landing-nav-logo">Parley</a>
+    <div class="landing-nav-links">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#beyond-the-negotiation">Features</a>
+      <a href="#glance">Insights</a>
+    </div>
+    <a href="/dashboard" class="btn-primary-large landing-nav-cta"><span>Start Negotiating</span></a>
+  </div>
+</nav>
+
 <div class="orb orb-1"></div>
 <div class="orb orb-2"></div>
 <div class="orb orb-3"></div>
@@ -56,8 +68,9 @@
     </div>
   </div>
 </div>
+<p class="live-replay-caption">Every replay above is a real transcript from testing the trained agent — not scripted or invented.</p>
 
-<h3 class="beyond-heading" style="margin-top:50px;">Parley at a glance</h3>
+<h3 id="glance" class="beyond-heading" style="margin-top:50px;">Parley at a glance</h3>
 <div class="glance-strip" data-reveal>
   <div class="glance-item">
     <div class="glance-num">60,000+</div>
@@ -78,7 +91,7 @@
   </div>
 </div>
 
-<h3 class="beyond-heading" style="margin-top:50px;">How it works</h3>
+<h3 id="how-it-works" class="beyond-heading" style="margin-top:50px;">How it works</h3>
 <div class="how-it-works">
   <div class="hiw-step" data-reveal>
     <div class="hiw-icon">🗂️</div>
@@ -97,7 +110,7 @@
   </div>
 </div>
 
-<div class="beyond-section">
+<div class="beyond-section" id="beyond-the-negotiation">
   <h3 class="beyond-heading">Beyond the negotiation</h3>
   <p class="beyond-subcopy">Every deal leaves intelligence behind — surfaced across the product, not locked in a single transcript.</p>
   <div class="beyond-flow">
@@ -124,7 +137,24 @@
   </div>
 </div>
 
-<footer>Every replay above is a real transcript from testing the trained agent — not scripted or invented.</footer>
+<section class="final-cta" data-reveal>
+  <h2 class="final-cta-title">Ready to see what your next deal could look like?</h2>
+  <p class="final-cta-sub">Put Parley to work and negotiate against a trained AI agent.</p>
+  <a href="/dashboard" class="btn-primary-large"><span>Start Negotiating</span></a>
+</section>
+
+<footer class="landing-footer">
+  <div class="landing-footer-brand">
+    <span class="landing-footer-name">Parley</span>
+    <span class="landing-footer-desc">AI negotiation agent</span>
+  </div>
+  <div class="landing-footer-links">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#beyond-the-negotiation">Features</a>
+    <a href="#glance">Insights</a>
+  </div>
+  <div class="landing-footer-copy">© 2026 Parley — an AI negotiation agent built with reinforcement learning.</div>
+</footer>
 <script src="/static/ticker.js"></script>
 <script src="/static/hero-preview.js"></script>
 <script src="/static/landing.js"></script>
