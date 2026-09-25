@@ -8,6 +8,7 @@ const mfDesc = document.getElementById('mfDesc');
 const mfDetails = document.getElementById('mfDetails');
 const mfQty = document.getElementById('mfQty');
 const mfRef = document.getElementById('mfRef');
+const mfRefPerUnit = document.getElementById('mfRefPerUnit');
 const mfError = document.getElementById('mfError');
 const modalClose = document.getElementById('modalClose');
 const modalCancel = document.getElementById('modalCancel');
@@ -38,6 +39,7 @@ function renderQuickfill(categoryId){
       const qtyMatch = item.name.match(/—\s*(\d+)/);
       mfQty.value = qtyMatch ? qtyMatch[1] : '';
       mfRef.value = Math.round((item.min + item.max) / 2);
+      updatePerUnitHint();
     });
   });
 }
@@ -62,7 +64,7 @@ function checkPolicy(categoryId, refPrice, quantity){
     if (refPrice < lo || refPrice > hi){
       issues.push({
         type: 'price',
-        text: `$${refPrice.toLocaleString()} is well outside the typical range for this category ($${Math.round(band.min).toLocaleString()} – $${Math.round(band.max).toLocaleString()}). Double-check the reference price, or proceed if this is intentional.`
+        text: `$${refPrice.toLocaleString()} is well outside the typical range for this category ($${Math.round(band.min).toLocaleString()} – $${Math.round(band.max).toLocaleString()}). Double-check the target price, or proceed if this is intentional.`
       });
     }
   }
@@ -74,6 +76,18 @@ function checkPolicy(categoryId, refPrice, quantity){
   }
   return issues;
 }
+
+function updatePerUnitHint(){
+  const qty = parseInt(mfQty.value, 10);
+  const ref = parseFloat(mfRef.value);
+  if (qty > 0 && ref > 0){
+    mfRefPerUnit.textContent = `≈ $${Math.round(ref / qty).toLocaleString()} per unit`;
+  } else {
+    mfRefPerUnit.textContent = '';
+  }
+}
+mfQty.addEventListener('input', updatePerUnitHint);
+mfRef.addEventListener('input', updatePerUnitHint);
 
 function showError(text){
   mfError.textContent = text;
@@ -103,6 +117,7 @@ function openModal(categoryId){
   mfDetails.value = '';
   mfQty.value = '';
   mfRef.value = '';
+  mfRefPerUnit.textContent = '';
   clearError();
   resetPolicyWarning();
 
@@ -129,7 +144,7 @@ document.getElementById('modalStart').addEventListener('click', () => {
   const quantity = document.getElementById('mfQty').value;
 
   if (!name || isNaN(refPrice) || refPrice <= 0){
-    showError('Enter an item name and a valid reference price.');
+    showError('Enter an item and a valid target price.');
     return;
   }
   clearError();

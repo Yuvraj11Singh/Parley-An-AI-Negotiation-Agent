@@ -34,14 +34,15 @@
     </div>
 
     <div class="modal-form">
-      <label>Item name<input type="text" id="mfName" placeholder="e.g. Business laptops — 20 units"></label>
-      <label>Description<textarea id="mfDesc" rows="2" placeholder="What is it, and what's it for?"></textarea></label>
-      <label>Key details <span class="modal-hint">(one per line)</span><textarea id="mfDetails" rows="3" placeholder="Core i5 / 16GB / 512GB SSD&#10;3-year onsite warranty&#10;Delivery within 3 weeks"></textarea></label>
+      <label>Item<input type="text" id="mfName" placeholder="e.g. Ergonomic office chairs"></label>
       <div class="modal-row">
-        <label>Quantity<input type="number" id="mfQty" min="1" step="1" placeholder="20"></label>
-        <label>Reference price ($)<input type="number" id="mfRef" min="1" step="1" placeholder="20000"></label>
+        <label>Quantity<input type="number" id="mfQty" min="1" step="1" placeholder="60 units"></label>
+        <label>Target price — total for this order ($)<input type="number" id="mfRef" min="1" step="1" placeholder="20000"></label>
       </div>
-      <div class="modal-hint">Reference price is the expected market price for the whole order. The negotiation's real prices are randomized around it.</div>
+      <div id="mfRefPerUnit" class="modal-hint"></div>
+      <label>Requirements <span class="modal-hint">(one per line)</span><textarea id="mfDetails" rows="3" placeholder="Adjustable lumbar support&#10;Headrest&#10;5-year warranty"></textarea></label>
+      <label>Description <span class="modal-hint">(optional)</span><textarea id="mfDesc" rows="2" placeholder="Any other context for this purchase"></textarea></label>
+      <div class="modal-hint">Target price is your expected budget for the whole order — the negotiation's real prices are randomized around it.</div>
       <div id="mfError" class="modal-error" style="display:none;"></div>
       <div id="mfPolicyWarning" class="modal-policy-warning" style="display:none;">
         <div class="modal-policy-icon">⚠</div>
@@ -51,7 +52,7 @@
 
     <div class="modal-actions">
       <button id="modalCancel">Cancel</button>
-      <button id="modalStart" class="primary">Start negotiation →</button>
+      <button id="modalStart" class="primary">Start Negotiation →</button>
     </div>
 
     <div id="modalPolicyActions" class="modal-actions" style="display:none;">

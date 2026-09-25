@@ -27,12 +27,12 @@
   <main class="app-content">
     <div class="desk-header">
       <h1>Deal Desk</h1>
-      <div class="sub">You're the seller. Negotiate against a trained AI buyer.</div>
+      <div class="sub" id="deskSub">Report what the seller quotes each round — Parley negotiates the purchase on your behalf.</div>
     </div>
     <div class="desk-body">
       <aside class="stepper">
         <div class="step" id="step-start" data-active="true">
-          <span class="step-num">1</span><span class="step-label">Start</span>
+          <span class="step-num">1</span><span class="step-label">Setup</span>
         </div>
         <div class="step" id="step-negotiate">
           <span class="step-num">2</span><span class="step-label">Negotiation</span>
@@ -43,16 +43,26 @@
       </aside>
 
       <div class="chat-col">
+        <div id="dealBrief" class="deal-brief" style="display:none;">
+          <div class="deal-brief-label">Deal brief</div>
+          <div class="deal-brief-grid">
+            <div class="deal-brief-item"><span>Category</span><b id="dbCategory">—</b></div>
+            <div class="deal-brief-item"><span>Item</span><b id="dbItem">—</b></div>
+            <div class="deal-brief-item"><span>Quantity</span><b id="dbQty">—</b></div>
+            <div class="deal-brief-item"><span>Target price</span><b id="dbTarget">—</b></div>
+          </div>
+          <div class="deal-brief-reqs" id="dbReqs"></div>
+        </div>
         <div id="chatThread" class="chat-thread">
           <div class="chat-empty" id="chatEmpty">
             Start a negotiation to begin the conversation.
           </div>
         </div>
         <div class="chat-input-row" id="offerRow" style="display:none;">
-          <input type="number" id="askInput" placeholder="Enter your asking price">
+          <input type="number" id="askInput" placeholder="Enter the seller's asking price">
           <button id="sendBtn" class="primary">Send</button>
         </div>
-        <button id="startBtn" class="primary" style="margin-top:8px;">Start negotiation</button>
+        <button id="startBtn" class="primary" style="margin-top:8px;">Start Negotiation</button>
         <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
       </div>
 
@@ -66,7 +76,7 @@
         </div>
 
         <aside class="proposal-panel">
-          <h3>Current Proposal</h3>
+          <h3>Negotiation State</h3>
           <div id="proposalCard" class="proposal-card">
             <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
           </div>
@@ -74,7 +84,7 @@
       </div>
     </div>
 
-    <footer>The buyer plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
+    <footer>Parley plays a frozen, greedy policy learned by Q-learning — it never explores or updates during play.</footer>
   </main>
 </div>
 
