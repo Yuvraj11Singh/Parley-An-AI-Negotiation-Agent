@@ -22,6 +22,25 @@ class NegotiationState:
         """Zone of Possible Agreement — positive if a deal is theoretically possible."""
         return self.buyer_max - self.seller_min
 
+    @property
+    def stall_rounds(self) -> int:
+        """How many of the most recent consecutive rounds the seller's ask
+        has failed to decrease by at least deal_tolerance (an ask that rose
+        counts as a stall too). Computed from `history`, which `reset()`
+        seeds with the opening ask as round 0 — no separate tracking."""
+        if len(self.history) < 2:
+            return 0
+        tol = deal_tolerance(self.buyer_max)
+        count = 0
+        for i in range(len(self.history) - 1, 0, -1):
+            prev_ask = self.history[i - 1][2]
+            curr_ask = self.history[i][2]
+            if prev_ask - curr_ask < tol:
+                count += 1
+            else:
+                break
+        return count
+
 
 import random
 
@@ -73,6 +92,9 @@ class NegotiationEnv:
             buyer_offer=buyer_offer,
             seller_ask=seller_ask,
         )
+        # seed history with the opening ask as "round 0" so stall_rounds has
+        # a real previous ask to compare against from round 2 onward
+        self.state.history.append((0, buyer_offer, seller_ask, "opening"))
         return self.state
 
     def step(self, action):

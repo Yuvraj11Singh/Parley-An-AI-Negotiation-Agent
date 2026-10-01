@@ -143,6 +143,7 @@ def session_status():
 
 
 TRAINING_LOGS = {
+    "v7": "train_v7.csv",
     "v6": "train_randomized_v6.csv",
     "v5": "train_randomized_v5.csv",
     "v4": "train_randomized_v4.csv",

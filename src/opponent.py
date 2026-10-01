@@ -90,12 +90,107 @@ class RandomizedSeller(BaseSeller):
         return max(self._seller_min, new_ask)
 
 
+class StubbornSeller(BaseSeller):
+    """
+    Opens with a markup over its own minimum and then almost never moves —
+    added in v7 so the agent sees genuinely immovable sellers during
+    training, not just ones who concede slowly.
+
+    The markup is drawn relative to `seller_min` only (never `buyer_max`,
+    which stays private) — but because the two are drawn independently
+    from overlapping ranges, a meaningful share of episodes naturally end
+    up with this seller's ask fixed above `buyer_max`, where no deal is
+    reachable at all. In those episodes the only good response is to walk
+    away rather than concede toward a price nobody will ever reach.
+    """
+
+    def __init__(self, markup_range=(0.30, 0.75), rare_move_chance=0.10,
+                 rare_move_fraction=(0.01, 0.03)):
+        self.markup_range = markup_range
+        self.rare_move_chance = rare_move_chance
+        self.rare_move_fraction = rare_move_fraction
+        self._seller_min = None
+        self._ask = None
+
+    def reset(self, seller_min: float) -> None:
+        self._seller_min = seller_min
+        self._ask = None
+
+    def opening_ask(self, seller_min: float) -> float:
+        markup = random.uniform(*self.markup_range)
+        self._ask = seller_min * (1 + markup)
+        return self._ask
+
+    def respond(self, state) -> float:
+        if random.random() < self.rare_move_chance:
+            frac = random.uniform(*self.rare_move_fraction)
+            self._ask = max(self._seller_min, self._ask - frac * (self._ask - state.buyer_offer))
+        return self._ask
+
+
+class ExploitativeSeller(BaseSeller):
+    """
+    Punishes caving — added in v7 so the agent learns that conceding isn't
+    always the way to make progress. Holds its ask firm while the buyer
+    keeps raising its own offer, and only starts conceding once the buyer
+    has held its offer flat for at least `k` consecutive rounds (k is
+    randomized per episode, 2-4). Its floor sits below `buyer_max`, so a
+    real deal is reachable here — but only by holding firm first.
+
+    "Buyer held firm" is read off how `buyer_offer` moves across
+    `state.history` (unchanged between two consecutive rounds means the
+    buyer's last action was a 0.0 concession) rather than the buyer's raw
+    action, which a real opponent couldn't observe directly either.
+    """
+
+    def __init__(self, markup_range=(0.25, 0.55), hold_k_range=(2, 4),
+                 concession_rate=0.22):
+        self.markup_range = markup_range
+        self.hold_k_range = hold_k_range
+        self.concession_rate = concession_rate
+        self._seller_min = None
+        self._ask = None
+        self._hold_k = None
+
+    def reset(self, seller_min: float) -> None:
+        self._seller_min = seller_min
+        self._ask = None
+        self._hold_k = random.randint(*self.hold_k_range)
+
+    def opening_ask(self, seller_min: float) -> float:
+        markup = random.uniform(*self.markup_range)
+        self._ask = seller_min + seller_min * markup + random.uniform(0, 10)
+        return self._ask
+
+    @staticmethod
+    def _buyer_hold_streak(state) -> int:
+        history = state.history
+        if len(history) < 2:
+            return 0
+        count = 0
+        for i in range(len(history) - 1, 0, -1):
+            prev_offer = history[i - 1][1]
+            curr_offer = history[i][1]
+            if curr_offer == prev_offer:
+                count += 1
+            else:
+                break
+        return count
+
+    def respond(self, state) -> float:
+        if self._buyer_hold_streak(state) >= self._hold_k:
+            self._ask = max(self._seller_min, self._ask - self.concession_rate * (self._ask - state.buyer_offer))
+        return self._ask
+
+
 class MixedSeller(BaseSeller):
     """
     Training pool: each episode draws one opponent type. Weighted toward
     the randomized seller but with a substantial share of persistently
     slow fixed-schedule sellers, which the previous training distribution
-    under-represented.
+    under-represented. v7 adds StubbornSeller and ExploitativeSeller at
+    15% each, scaling the pre-existing pool down to 70% in total so the
+    original relative mix among those four is preserved.
     """
 
     def __init__(self, weights=None):
@@ -104,8 +199,10 @@ class MixedSeller(BaseSeller):
             FixedScheduleSeller("slow"),
             FixedScheduleSeller("medium"),
             FixedScheduleSeller("fast"),
+            StubbornSeller(),
+            ExploitativeSeller(),
         ]
-        self.weights = weights or [0.55, 0.25, 0.10, 0.10]
+        self.weights = weights or [0.385, 0.175, 0.07, 0.07, 0.15, 0.15]
         self._current = None
 
     def reset(self, seller_min: float) -> None:
