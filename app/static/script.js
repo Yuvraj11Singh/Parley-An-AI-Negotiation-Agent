@@ -1,4 +1,5 @@
 const urlParams = new URLSearchParams(window.location.search);
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const chatThread = document.getElementById('chatThread');
 const chatEmpty = document.getElementById('chatEmpty');
@@ -28,8 +29,7 @@ const stepNegotiate = document.getElementById('step-negotiate');
 const stepOutcome = document.getElementById('step-outcome');
 
 let sellerMin = null;
-let roundHistory = [];
-let negotiationStartedAt = null;
+let negotiationRecord = null;
 let maxRounds = 10;
 let itemId = urlParams.get('item');
 let itemName = null;
@@ -79,27 +79,6 @@ function renderDealBrief(){
 }
 renderDealBrief();
 
-function saveToAuditTrail(outcome, dealPrice, buyerMax){
-  const record = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    startedAt: negotiationStartedAt,
-    category: categoryId,
-    itemId: itemId,
-    itemName: itemName,
-    referencePrice: referencePrice,
-    sellerMin: sellerMin,
-    rounds: roundHistory,
-    outcome,
-    dealPrice: dealPrice || null,
-    buyerMax: buyerMax || null,
-  };
-  const existing = JSON.parse(localStorage.getItem('parley_audit_trail') || '[]');
-  existing.unshift(record);
-  if (existing.length > 50) existing.length = 50; // cap stored history
-  localStorage.setItem('parley_audit_trail', JSON.stringify(existing));
-}
-
 function setStep(name){
   [stepStart, stepNegotiate, stepOutcome].forEach(s => s.removeAttribute('data-active'));
   if (name === 'start') stepStart.setAttribute('data-active', 'true');
@@ -107,31 +86,62 @@ function setStep(name){
   if (name === 'outcome') stepOutcome.setAttribute('data-active', 'true');
 }
 
-// Business-level stage label for a round — communicates progression
-// (ASK -> COUNTER -> CONCESSION -> DEAL/WALK-AWAY/TIMEOUT) without exposing
-// any of the agent's internal reasoning.
-function deriveStage(round, prevOffer, newOffer, outcome, done){
-  if (done){
-    if (outcome === 'deal') return { cls: 'deal', label: 'DEAL' };
-    if (outcome === 'walk') return { cls: 'walk', label: 'WALK-AWAY' };
-    return { cls: 'timeout', label: 'TIMEOUT' };
-  }
-  if (round <= 1) return { cls: 'counter', label: 'COUNTER' };
-  if (prevOffer !== null && newOffer > prevOffer + 0.05) return { cls: 'concession', label: 'CONCESSION' };
-  return { cls: 'ask', label: 'HOLDING FIRM' };
+// --- small animation utilities -------------------------------------------
+
+function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, prefersReducedMotion ? 0 : ms));
 }
 
-function addRoundRow(round, askVal, buyerOffer, prevOffer, outcome, done){
-  const stage = deriveStage(round, prevOffer, buyerOffer, outcome, done);
-  // on a walk-away, Parley made no new offer this round, so a "vs last round" delta isn't meaningful
-  const movement = (prevOffer !== null && !(done && outcome === 'walk')) ? buyerOffer - prevOffer : null;
-  const movementHtml = movement !== null
-    ? `<div class="offer-movement">${movement > 0.05 ? '+' : ''}${movement.toFixed(1)} vs last round</div>`
-    : '';
+// Eases a number display from one value to another. Falls back to an
+// instant set under reduced motion.
+function tweenNumber(el, from, to, duration){
+  if (prefersReducedMotion || from === null || from === undefined || isNaN(from)){
+    el.textContent = to.toFixed(1);
+    return;
+  }
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = (from + (to - from) * eased).toFixed(1);
+    if (t < 1) requestAnimationFrame(frame);
+    else el.textContent = to.toFixed(1);
+  }
+  requestAnimationFrame(frame);
+}
+
+function scrollThreadToBottom(){
+  if (prefersReducedMotion){
+    chatThread.scrollTop = chatThread.scrollHeight;
+  } else {
+    chatThread.scrollTo({ top: chatThread.scrollHeight, behavior: 'smooth' });
+  }
+}
+
+// Keeps a subtle ring on whichever round is most recent, removing it from
+// the one before — de-emphasizing history in favor of what's current now.
+function markCurrentRound(row, outcome){
+  const prev = chatThread.querySelector('.round-row.current');
+  if (prev && prev !== row) prev.classList.remove('current', 'current-deal', 'current-walk', 'current-timeout');
+  row.classList.add('current');
+  if (outcome) row.classList.add(`current-${outcome}`);
+}
+
+// negotiation-state derivation now lives in negotiation-model.js
+// (deriveRoundState) — single source of truth, shared with the audit trail.
+
+// --- round rendering: seller's ask registers first, then a brief "Parley
+// is considering" beat, then Parley's offer eases in. Under reduced motion
+// this collapses to one instant, fully-populated row. ---------------------
+
+async function addRoundRow(round, askVal, buyerOffer, prevOffer, stage, done, outcome){
+  const isWalkDone = done && outcome === 'walk';
+  const movement = (prevOffer !== null && !isWalkDone) ? buyerOffer - prevOffer : null;
+
   const row = document.createElement('div');
-  row.className = 'round-row hero-round';
+  row.className = 'round-row hero-round round-enter';
   row.innerHTML = `
-    <span class="hero-stage-tag ${stage.cls}">${stage.label}</span>
+    <span class="hero-stage-tag ${stage.cls}" style="opacity:0;">${stage.label}</span>
     <div class="round-badge">${round}</div>
     <div class="side seller-side">
       <div class="label">Seller's ask</div>
@@ -140,30 +150,144 @@ function addRoundRow(round, askVal, buyerOffer, prevOffer, outcome, done){
     <div class="arrow">⇌</div>
     <div class="side buyer-side">
       <div class="label">Parley's offer</div>
-      <div class="value">${buyerOffer.toFixed(1)}</div>
-      ${movementHtml}
+      <div class="value buyer-value"></div>
     </div>
   `;
   chatThread.appendChild(row);
-  chatThread.scrollTop = chatThread.scrollHeight;
+  markCurrentRound(row, null);
+  scrollThreadToBottom();
+
+  const buyerValueEl = row.querySelector('.buyer-value');
+  const badgeEl = row.querySelector('.hero-stage-tag');
+
+  if (prefersReducedMotion){
+    buyerValueEl.textContent = buyerOffer.toFixed(1);
+    badgeEl.style.opacity = '1';
+    if (movement !== null){
+      const m = document.createElement('div');
+      m.className = 'offer-movement';
+      m.textContent = `${movement > 0.05 ? '+' : ''}${movement.toFixed(1)} vs last round`;
+      buyerValueEl.after(m);
+    }
+    if (done) markCurrentRound(row, outcome);
+    return;
+  }
+
+  // beat 1: let the seller's ask register
+  await sleep(260);
+
+  // beat 2: Parley is considering — a neutral processing cue, not a claim
+  // about what it's "thinking"
+  buyerValueEl.classList.add('thinking');
+  buyerValueEl.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span>';
+  await sleep(520);
+
+  // beat 3: Parley's offer eases in
+  buyerValueEl.classList.remove('thinking');
+  buyerValueEl.textContent = '';
+  tweenNumber(buyerValueEl, prevOffer !== null ? prevOffer : buyerOffer, buyerOffer, 420);
+  await sleep(420);
+
+  badgeEl.style.opacity = '1';
+
+  if (movement !== null){
+    const m = document.createElement('div');
+    m.className = 'offer-movement offer-movement-enter';
+    m.textContent = `${movement > 0.05 ? '+' : ''}${movement.toFixed(1)} vs last round`;
+    buyerValueEl.after(m);
+  }
+
+  if (done) markCurrentRound(row, outcome);
+  scrollThreadToBottom();
 }
 
-function addStatusMsg(outcomeClass, html){
+// --- outcome: a polished, earned conclusion rather than a status-text swap
+
+function renderOutcome(data, lastAsk){
+  const cls = data.outcome; // 'deal' | 'walk' | 'timeout'
   const div = document.createElement('div');
-  div.className = `msg status ${outcomeClass}`;
-  div.innerHTML = html;
+  div.className = `msg status ${cls} outcome-card${prefersReducedMotion ? '' : ' outcome-enter'}`;
+
+  if (cls === 'deal'){
+    const savings = Math.max(0, data.buyer_max - data.deal_price);
+    div.innerHTML = `
+      <div class="outcome-headline">✓ Deal closed at <b>${data.deal_price.toFixed(1)}</b></div>
+      <div class="outcome-grid">
+        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
+        <div><span>Parley's final offer</span><b>${data.buyer_offer.toFixed(1)}</b></div>
+        <div><span>Parley's hidden max</span><b>${data.buyer_max.toFixed(1)}</b></div>
+        <div><span>Value captured</span><b class="outcome-savings">${savings.toFixed(1)}</b></div>
+      </div>
+    `;
+  } else if (cls === 'walk'){
+    div.innerHTML = `
+      <div class="outcome-headline">Parley walked away from this negotiation</div>
+      <div class="outcome-grid outcome-grid-2">
+        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
+        <div><span>Parley's hidden max</span><b>${data.buyer_max.toFixed(1)}</b></div>
+      </div>
+      <div class="outcome-explain">Parley has its own hidden maximum price for this negotiation — generated at random each time you start one. No deal was possible within that limit, so it stopped negotiating.</div>
+    `;
+  } else {
+    div.innerHTML = `
+      <div class="outcome-headline">Negotiation timed out after ${maxRounds} rounds</div>
+      <div class="outcome-grid outcome-grid-2">
+        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
+        <div><span>Parley's final offer</span><b>${data.buyer_offer.toFixed(1)}</b></div>
+      </div>
+      <div class="outcome-explain">No agreement was reached within the round limit. Parley's hidden maximum for this negotiation was ${data.buyer_max.toFixed(1)}.</div>
+    `;
+  }
+
   chatThread.appendChild(div);
-  chatThread.scrollTop = chatThread.scrollHeight;
+  scrollThreadToBottom();
 }
 
-function updateProposal(round, sellerAsk, buyerOffer, statusText, statusClass){
+// --- proposal panel: built once per negotiation, then values are updated
+// (and tweened) in place rather than replacing the whole card each round --
+
+function renderProposalSkeleton(){
   proposalCard.innerHTML = `
-    <div class="proposal-row"><span>Round</span><b>${round} / ${maxRounds}</b></div>
-    <div class="proposal-row"><span>Seller's ask</span><b>${sellerAsk !== null ? sellerAsk.toFixed(1) : '—'}</b></div>
-    <div class="proposal-row"><span>Parley's offer</span><b>${buyerOffer !== null ? buyerOffer.toFixed(1) : '—'}</b></div>
-    <div class="proposal-row ${statusClass || ''}"><span>Status</span><b>${statusText}</b></div>
+    <div class="proposal-row"><span>Round</span><b id="pRound">0 / ${maxRounds}</b></div>
+    <div class="proposal-row"><span>Seller's ask</span><b id="pSellerAsk">—</b></div>
+    <div class="proposal-row"><span>Parley's offer</span><b id="pBuyerOffer">—</b></div>
+    <div class="proposal-row" id="pStatusRow"><span>Status</span><b id="pStatusText" class="status-badge-text">Awaiting the seller's first ask</b></div>
     <div class="proposal-row proposal-row-sub"><span>Seller's floor (this scenario)</span><b>${sellerMin.toFixed(1)}</b></div>
   `;
+}
+
+let lastProposalSeller = null;
+let lastProposalOffer = null;
+
+function updateProposalValues(round, sellerAsk, buyerOffer, statusText, statusClass){
+  const pRound = document.getElementById('pRound');
+  const pSellerAsk = document.getElementById('pSellerAsk');
+  const pBuyerOffer = document.getElementById('pBuyerOffer');
+  const pStatusRow = document.getElementById('pStatusRow');
+  const pStatusText = document.getElementById('pStatusText');
+  if (!pRound) return;
+
+  pRound.textContent = `${round} / ${maxRounds}`;
+
+  if (sellerAsk !== null){
+    tweenNumber(pSellerAsk, lastProposalSeller, sellerAsk, 350);
+    lastProposalSeller = sellerAsk;
+  }
+  if (buyerOffer !== null){
+    tweenNumber(pBuyerOffer, lastProposalOffer, buyerOffer, 350);
+    lastProposalOffer = buyerOffer;
+  }
+
+  pStatusRow.className = `proposal-row ${statusClass || ''}`;
+  if (prefersReducedMotion){
+    pStatusText.textContent = statusText;
+  } else {
+    pStatusText.classList.add('swapping');
+    setTimeout(() => {
+      pStatusText.textContent = statusText;
+      pStatusText.classList.remove('swapping');
+    }, 160);
+  }
 }
 
 async function startNegotiation(){
@@ -184,14 +308,24 @@ async function startNegotiation(){
   pendingItem = null;
 
   sellerMin = data.seller_min;
-  roundHistory = [];
-  negotiationStartedAt = new Date().toISOString();
   maxRounds = data.max_rounds || 10;
   itemId = data.item.id;
   itemName = data.item.name;
   categoryId = data.category_id;
   referencePrice = data.item.reference_price;
   itemQuantity = data.item.quantity;
+  lastProposalSeller = null;
+  lastProposalOffer = null;
+
+  negotiationRecord = createNegotiationRecord({
+    category: categoryId,
+    itemId,
+    itemName,
+    referencePrice,
+    quantity: itemQuantity,
+    requirements: data.item.details,
+    sellerMin,
+  });
 
   deskSub.textContent = `Negotiating: ${data.item.name} · ${data.category}`;
 
@@ -209,18 +343,23 @@ async function startNegotiation(){
   startBtn.style.display = 'none';
   newBtn.style.display = 'none';
   offerRow.style.display = 'flex';
+  askInput.disabled = false;
+  sendBtn.disabled = false;
   askInput.value = '';
   askInput.focus();
 
   setStep('negotiate');
-  updateProposal(0, null, null, 'Awaiting the seller\'s first ask');
+  renderProposalSkeleton();
 }
 
 async function sendOffer(){
   const val = parseFloat(askInput.value);
   if (isNaN(val)) return;
 
-  const prevOffer = roundHistory.length ? roundHistory[roundHistory.length - 1].offer : null;
+  const prevOffer = negotiationRecord.rounds.length ? negotiationRecord.rounds[negotiationRecord.rounds.length - 1].offer : null;
+
+  askInput.disabled = true;
+  sendBtn.disabled = true;
 
   const res = await fetch('/api/offer', {
     method: 'POST',
@@ -231,35 +370,38 @@ async function sendOffer(){
 
   if (data.error){
     alert(data.error);
+    askInput.disabled = false;
+    sendBtn.disabled = false;
     return;
   }
 
-  addRoundRow(data.round, val, data.buyer_offer, prevOffer, data.outcome, data.done);
-  roundHistory.push({ round: data.round, ask: val, offer: data.buyer_offer, at: new Date().toISOString() });
-
   askInput.value = '';
+
+  const stage = deriveRoundState(data.round, prevOffer, data.buyer_offer, data.outcome, data.done);
+  await addRoundRow(data.round, val, data.buyer_offer, prevOffer, stage, data.done, data.outcome);
+  pushNegotiationRound(negotiationRecord, {
+    roundNumber: data.round,
+    sellerAsk: val,
+    agentOffer: data.buyer_offer,
+    prevOffer,
+    action: data.action,
+    outcome: data.outcome,
+    done: data.done,
+  });
 
   if (data.done){
     offerRow.style.display = 'none';
     newBtn.style.display = 'inline-block';
     setStep('outcome');
-
-    let cls, html;
-    if (data.outcome === 'deal'){
-      cls = 'deal';
-      html = `Deal closed at <b>${data.deal_price.toFixed(1)}</b>. Parley's authorized maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
-    } else if (data.outcome === 'walk'){
-      cls = 'walk';
-      html = `Parley walked away from this deal. Its authorized maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
-    } else {
-      cls = 'timeout';
-      html = `Negotiation timed out after ${maxRounds} rounds. Parley's authorized maximum was <b>${data.buyer_max.toFixed(1)}</b>.`;
-    }
-    addStatusMsg(cls, html);
-    updateProposal(data.round, val, data.buyer_offer, data.outcome.toUpperCase(), cls);
-    saveToAuditTrail(data.outcome, data.deal_price, data.buyer_max);
+    updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls);
+    await sleep(250);
+    renderOutcome(data, val);
+    finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max);
+    saveNegotiationRecord(negotiationRecord);
   } else {
-    updateProposal(data.round, val, data.buyer_offer, 'Counter-offer');
+    updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls);
+    askInput.disabled = false;
+    sendBtn.disabled = false;
     askInput.focus();
   }
 }

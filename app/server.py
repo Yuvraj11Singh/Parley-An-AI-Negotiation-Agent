@@ -81,7 +81,7 @@ ITEMS = {
 DEFAULT_ITEM = "laptops_20"
 
 
-def _serialize(state: NegotiationState, revealed: bool = False):
+def _serialize(state: NegotiationState, revealed: bool = False, action=None):
     return {
         "round": state.round,
         "buyer_offer": round(state.buyer_offer, 1),
@@ -90,6 +90,10 @@ def _serialize(state: NegotiationState, revealed: bool = False):
         "outcome": state.outcome,
         "deal_price": round(state.deal_price, 1) if state.deal_price else None,
         "buyer_max": round(state.buyer_max, 1) if revealed else None,
+        # the real decision the trained agent made this round ("WALK" or a
+        # concession fraction) — exposed read-only for frontend telemetry,
+        # doesn't change how the decision itself is made
+        "action": action,
     }
 
 
@@ -261,7 +265,7 @@ def submit_offer():
     if action == "WALK":
         state.done = True
         state.outcome = "walk"
-        return jsonify(_serialize(state, revealed=True))
+        return jsonify(_serialize(state, revealed=True, action=action))
 
     concession = float(action)
     state.buyer_offer = min(state.buyer_max, state.buyer_offer + concession * state.gap)
@@ -270,14 +274,14 @@ def submit_offer():
         state.done = True
         state.outcome = "deal"
         state.deal_price = state.seller_ask
-        return jsonify(_serialize(state, revealed=True))
+        return jsonify(_serialize(state, revealed=True, action=action))
 
     if state.round >= MAX_ROUNDS:
         state.done = True
         state.outcome = "timeout"
-        return jsonify(_serialize(state, revealed=True))
+        return jsonify(_serialize(state, revealed=True, action=action))
 
-    return jsonify(_serialize(state))
+    return jsonify(_serialize(state, action=action))
 
 
 if __name__ == "__main__":
