@@ -167,6 +167,13 @@ body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
 .round-row .seller-side .value{ color:var(--accent); }
 .round-row .arrow{ color:var(--ink-dim); font-size:16px; flex-shrink:0; }
 
+.speaker-tag{
+  display:inline-block; font-family:var(--mono); font-size:8.5px; font-weight:700;
+  letter-spacing:0.5px; padding:1px 5px; border-radius:4px; margin-right:3px;
+}
+.seller-side .speaker-tag{ background:var(--panel-2); color:var(--ink-dim); }
+.buyer-side .speaker-tag{ background:var(--accent-soft); color:var(--accent); }
+
 /* seller vs. Parley — a small colored marker ahead of each label, on top of
    the existing left/right + color distinction, so the two sides read
    unmistakably as two different parties */
@@ -247,6 +254,43 @@ button.primary:hover{ background:#6b72e8; border-color:#6b72e8; }
 /* live status badge — crossfades to its new state instead of snapping */
 .status-badge-text{ display:inline-block; transition: opacity .16s ease, transform .16s ease; }
 .status-badge-text.swapping{ opacity:0; transform:translateY(-3px); }
+
+/* Parley Status panel header — agent-oriented hierarchy (Phase 3.1) */
+.parley-status-head{ display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:4px; }
+.parley-status-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim); font-weight:600; }
+.parley-status-state{ font-family:var(--heading); font-weight:700; font-size:15px; color:var(--accent); }
+.parley-status-state.deal{ color:var(--deal); }
+.parley-status-state.walk{ color:var(--walk); }
+.parley-status-state.timeout{ color:var(--timeout); }
+.phase-pill{
+  margin-left:auto; font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.5px;
+  color:var(--ink-dim); background:var(--panel-2); border:1px solid var(--line);
+  border-radius:8px; padding:2px 7px;
+}
+.agent-activity{
+  font-size:12px; color:var(--ink-dim); font-style:italic; margin:2px 0 14px;
+  padding-bottom:14px; border-bottom:1px solid var(--line);
+}
+
+/* negotiation zone — compact visual of convergence; never plots buyer_max */
+.negotiation-zone{ margin-bottom:14px; }
+.negotiation-zone-track{
+  position:relative; height:6px; border-radius:4px; background:var(--panel-2);
+  border:1px solid var(--line); margin-bottom:6px;
+}
+.negotiation-zone-fill{
+  position:absolute; top:-1px; bottom:-1px; border-radius:4px;
+  background:var(--accent-soft); border:1px solid var(--accent-dim);
+  transition: left .35s ease, width .35s ease;
+}
+.negotiation-zone-marker{
+  position:absolute; top:50%; width:10px; height:10px; border-radius:50%;
+  transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 0 1px var(--line);
+  transition: left .35s ease;
+}
+.negotiation-zone-marker.buyer{ background:var(--accent); z-index:2; }
+.negotiation-zone-marker.seller{ background:var(--ink-dim); z-index:1; }
+.negotiation-zone-labels{ display:flex; justify-content:space-between; font-size:9px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.4px; }
 
 footer{
   color:var(--ink-dim); font-size:11.5px; text-align:center; margin-top:24px;
@@ -795,11 +839,26 @@ a.primary:active{ transform:scale(0.98); }
 .deal-brief-item{ display:flex; flex-direction:column; gap:4px; }
 .deal-brief-item span{ font-size:10.5px; color:var(--ink-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
 .deal-brief-item b{ font-family:var(--heading); font-size:14px; font-weight:600; color:var(--ink); }
-.deal-brief-reqs{ display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+.deal-brief-terms{ margin-top:14px; }
+.deal-brief-terms-label{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-dim); font-weight:600; margin-bottom:6px; }
+.deal-brief-reqs, .deal-brief-prefs{ display:flex; flex-wrap:wrap; gap:6px; }
 .deal-brief-req{
   font-size:11px; color:var(--ink); background:var(--panel-2); border:1px solid var(--line);
   border-radius:14px; padding:4px 10px;
 }
+.deal-brief-pref{
+  font-size:11px; color:var(--ink-dim); background:transparent; border:1px dashed var(--line-bright);
+  border-radius:14px; padding:4px 10px;
+}
+
+/* concession inventory — what Parley can move on vs. what's protected;
+   a foundation for future multi-issue negotiation, not a working feature */
+.item-concessions{ margin-top:4px; padding-top:12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.concession-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.concession-row > span{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-dim); font-weight:600; flex-basis:100%; }
+.concession-chip{ font-size:11px; border-radius:12px; padding:3px 9px; font-weight:600; }
+.concession-chip.negotiable{ color:var(--accent); background:var(--accent-soft); border:1px solid var(--accent-dim); }
+.concession-chip.protected{ color:var(--ink-dim); background:var(--panel-2); border:1px solid var(--line); }
 
 .modal-backdrop{ position:fixed; inset:0; background:rgba(45,49,66,0.35); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px; }
 .modal{ background:var(--panel); border:1px solid var(--line); border-radius:16px; width:100%; max-width:620px; padding:22px 24px; box-shadow:0 20px 60px rgba(45,49,66,0.18); animation: fadeUp .25s ease-out; }
@@ -961,7 +1020,7 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
   }
   .orb-1, .orb-2, .orb-3, .live-dot, .ticker-row, .btn-primary-large::after, .hero-status-dot,
   #heroPreviewStage, .hero-round, .hero-stage-tag, .status-badge-text, .proposal-row b,
-  .outcome-card{
+  .outcome-card, .negotiation-zone-fill, .negotiation-zone-marker{
     animation:none !important; transition:none !important;
   }
   #heroPreviewStage.hero-fade-out{ opacity:1 !important; }

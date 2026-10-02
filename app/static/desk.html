@@ -51,7 +51,14 @@
             <div class="deal-brief-item"><span>Quantity</span><b id="dbQty">—</b></div>
             <div class="deal-brief-item"><span>Target price</span><b id="dbTarget">—</b></div>
           </div>
-          <div class="deal-brief-reqs" id="dbReqs"></div>
+          <div class="deal-brief-terms">
+            <div class="deal-brief-terms-label">Requirements — hard</div>
+            <div class="deal-brief-reqs" id="dbReqs"></div>
+          </div>
+          <div class="deal-brief-terms" id="dbPrefsWrap" style="display:none;">
+            <div class="deal-brief-terms-label">Preferences — soft</div>
+            <div class="deal-brief-prefs" id="dbPrefs"></div>
+          </div>
         </div>
         <div id="chatThread" class="chat-thread">
           <div class="chat-empty" id="chatEmpty">
@@ -73,10 +80,10 @@
           <div class="item-desc" id="icDesc"></div>
           <ul class="item-details" id="icDetails"></ul>
           <div class="item-range" id="icRange"></div>
+          <div class="item-concessions" id="icConcessions"></div>
         </div>
 
         <aside class="proposal-panel">
-          <h3>Negotiation State</h3>
           <div id="proposalCard" class="proposal-card">
             <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
           </div>

@@ -183,9 +183,10 @@
             <label>Target price — total for this order ($)<input type="number" id="mfRef" min="1" step="1" placeholder="20000"></label>
           </div>
           <div id="mfRefPerUnit" class="modal-hint"></div>
-          <label>Requirements <span class="modal-hint">(one per line)</span><textarea id="mfDetails" rows="3" placeholder="Adjustable lumbar support&#10;Headrest&#10;5-year warranty"></textarea></label>
+          <label>Requirements — hard constraints <span class="modal-hint">(one per line)</span><textarea id="mfDetails" rows="3" placeholder="Adjustable lumbar support&#10;Headrest&#10;5-year warranty"></textarea></label>
+          <label>Preferences — nice-to-have <span class="modal-hint">(one per line, optional)</span><textarea id="mfPreferences" rows="2" placeholder="Faster delivery&#10;Installation included"></textarea></label>
           <label>Description <span class="modal-hint">(optional)</span><textarea id="mfDesc" rows="2" placeholder="Any other context for this purchase"></textarea></label>
-          <div class="modal-hint">Target price is your expected budget for the whole order — the negotiation's real prices are randomized around it.</div>
+          <div class="modal-hint">Target price is your expected budget for the whole order — the negotiation's real prices are randomized around it. Requirements and preferences are recorded with the deal, not yet negotiated — the agent negotiates on price only today.</div>
           <div id="mfError" class="modal-error" style="display:none;"></div>
           <div id="mfPolicyWarning" class="modal-policy-warning" style="display:none;">
             <div class="modal-policy-icon">⚠</div>

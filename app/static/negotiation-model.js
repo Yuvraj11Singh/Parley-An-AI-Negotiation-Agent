@@ -52,8 +52,10 @@ function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, ac
 
 // --- canonical negotiation record (Section 12) ------------------------------
 
-function createNegotiationRecord({ category, itemId, itemName, referencePrice, quantity, requirements, sellerMin }){
+function createNegotiationRecord({ category, itemId, itemName, referencePrice, quantity, requirements, preferences, sellerMin }){
   const now = new Date().toISOString();
+  const reqList = (requirements && requirements.length) ? requirements : null;
+  const prefList = (preferences && preferences.length) ? preferences : null;
   return {
     // v1 fields — unchanged shape, so existing readers keep working
     id: Date.now(),
@@ -76,11 +78,15 @@ function createNegotiationRecord({ category, itemId, itemName, referencePrice, q
     // the setup form already collects this as "target price" — it's the
     // user's own reference/budget figure, never the agent's hidden max
     targetPrice: referencePrice ?? null,
-    requirements: (requirements && requirements.length) ? requirements : null,
-    constraints: null,   // not yet collected by the setup flow (Phase 1, later checkpoint)
-    preferences: null,   // not yet collected by the setup flow
-    priorities: null,    // not yet collected by the setup flow
-    seller: null,        // no seller-identity concept exists yet
+    // "Requirements" from setup doubles as the hard-constraint bucket — the
+    // current engine negotiates price only, so these are recorded context,
+    // never something Parley trades on
+    requirements: reqList,
+    constraints: reqList,
+    preferences: prefList,  // soft, nice-to-have — also not negotiated by the current engine
+    priorities: null,       // no priority-ranking UI yet — left honestly null, not guessed
+    seller: null,           // no seller-identity concept exists yet
+    concessionInventory: buildConcessionInventory({ quantity, constraints: reqList }),
     telemetry: [],
     finalPrice: null,
     valueCaptured: null,
@@ -142,10 +148,14 @@ function normalizeNegotiationRecord(raw){
     quantity: raw.quantity ?? null,
     targetPrice: raw.targetPrice ?? (raw.referencePrice ?? null),
     requirements: raw.requirements ?? null,
-    constraints: raw.constraints ?? null,
+    constraints: raw.constraints ?? raw.requirements ?? null,
     preferences: raw.preferences ?? null,
     priorities: raw.priorities ?? null,
     seller: raw.seller ?? null,
+    concessionInventory: raw.concessionInventory ?? buildConcessionInventory({
+      quantity: raw.quantity ?? null,
+      constraints: raw.constraints ?? raw.requirements ?? null,
+    }),
     telemetry,
     finalPrice: raw.finalPrice ?? (raw.outcome === 'deal' ? (raw.dealPrice ?? null) : null),
     valueCaptured: raw.valueCaptured ?? ((raw.outcome === 'deal' && raw.dealPrice != null && raw.buyerMax != null)
@@ -158,7 +168,11 @@ function normalizeNegotiationRecord(raw){
   };
 }
 
-function loadAuditTrail(){
+// Named loadNegotiationRecords (not loadAuditTrail) deliberately — dashboard.js
+// already has its own loadAuditTrail(filterText) that renders into the DOM;
+// this just returns normalized data, so the two can't collide if a page
+// loads both scripts.
+function loadNegotiationRecords(){
   let existing;
   try {
     existing = JSON.parse(localStorage.getItem(AUDIT_TRAIL_KEY) || '[]');
@@ -169,8 +183,46 @@ function loadAuditTrail(){
 }
 
 function saveNegotiationRecord(record){
-  const existing = loadAuditTrail();
+  const existing = loadNegotiationRecords();
   existing.unshift(record);
   if (existing.length > AUDIT_TRAIL_CAP) existing.length = AUDIT_TRAIL_CAP; // cap stored history
   localStorage.setItem(AUDIT_TRAIL_KEY, JSON.stringify(existing));
+}
+
+// --- deal intelligence: concession inventory (Phase 2.4) -------------------
+// What Parley can move on vs. what's protected. The current engine only
+// ever negotiates price — everything else the user records is context that
+// travels with the deal, not something traded yet. This is intentionally a
+// plain data structure (not a UI), so a future multi-issue engine can read
+// it without the data model changing again.
+function buildConcessionInventory({ quantity, constraints }){
+  const protectedTerms = [];
+  if (quantity) protectedTerms.push('Quantity');
+  (constraints || []).forEach(c => protectedTerms.push(c));
+  return {
+    negotiable: ['Price'],
+    protected: protectedTerms,
+    potentialTrades: [], // foundation for "I can improve X if I receive Y" — none representable yet
+  };
+}
+
+// --- deal intelligence: negotiation position & phase (Phase 3.1, 3.4) ------
+// Both are derived purely from observable gap movement — no fabricated
+// reasoning, no information the backend doesn't already expose.
+
+function derivePosition(gapNow, gapPrev){
+  if (gapPrev === null || gapPrev === undefined) return 'Opening';
+  const eps = Math.max(1e-6, Math.abs(gapPrev) * 0.001);
+  if (gapNow < gapPrev - eps) return 'Narrowing';
+  if (gapNow > gapPrev + eps) return 'Widening';
+  return 'Stable';
+}
+
+function derivePhase(round, maxRounds, gapNow, openingGap){
+  if (round <= 1) return 'OPENING';
+  const roundFrac = round / Math.max(1, maxRounds);
+  const gapFrac = openingGap > 0 ? Math.max(0, gapNow) / openingGap : 0;
+  if (gapFrac <= 0.05 || roundFrac >= 0.85) return 'CLOSING';
+  if (gapFrac <= 0.35) return 'CONVERGENCE';
+  return 'EXPLORATION';
 }

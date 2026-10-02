@@ -6,6 +6,7 @@ const quickfillRow = document.getElementById('quickfillRow');
 const mfName = document.getElementById('mfName');
 const mfDesc = document.getElementById('mfDesc');
 const mfDetails = document.getElementById('mfDetails');
+const mfPreferences = document.getElementById('mfPreferences');
 const mfQty = document.getElementById('mfQty');
 const mfRef = document.getElementById('mfRef');
 const mfRefPerUnit = document.getElementById('mfRefPerUnit');
@@ -115,6 +116,7 @@ function openModal(categoryId){
   mfName.value = '';
   mfDesc.value = '';
   mfDetails.value = '';
+  mfPreferences.value = '';
   mfQty.value = '';
   mfRef.value = '';
   mfRefPerUnit.textContent = '';
@@ -183,6 +185,7 @@ function proceedToNegotiation(){
     name,
     description: mfDesc.value.trim(),
     details: mfDetails.value.split('\n').map(s => s.trim()).filter(Boolean),
+    preferences: mfPreferences.value.split('\n').map(s => s.trim()).filter(Boolean),
     quantity: mfQty.value ? parseInt(mfQty.value, 10) : null,
     reference_price: refPrice,
   };
