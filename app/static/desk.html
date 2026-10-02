@@ -65,6 +65,33 @@
             Start a negotiation to begin the conversation.
           </div>
         </div>
+
+        <div id="negotiationPulse" class="negotiation-pulse" style="display:none;">
+          <div class="pulse-label">Negotiation Pulse</div>
+          <div class="pulse-phases" id="pulsePhases">
+            <div class="pulse-phase" data-phase="OPENING"><span>Opening</span></div>
+            <div class="pulse-phase" data-phase="COUNTERING"><span>Countering</span></div>
+            <div class="pulse-phase" data-phase="CONVERGING"><span>Converging</span></div>
+            <div class="pulse-phase" data-phase="CLOSING"><span>Closing</span></div>
+          </div>
+          <div class="pulse-metrics">
+            <div class="pulse-metric">
+              <div class="pulse-metric-label">Seller movement</div>
+              <div class="pulse-metric-bar"><div class="pulse-metric-fill seller" id="pulseSellerFill"></div></div>
+              <div class="pulse-metric-vals"><span id="pulseSellerStart">—</span><span id="pulseSellerNow">—</span></div>
+            </div>
+            <div class="pulse-metric">
+              <div class="pulse-metric-label">Parley's position</div>
+              <div class="pulse-metric-bar"><div class="pulse-metric-fill buyer" id="pulseBuyerFill"></div></div>
+              <div class="pulse-metric-vals"><span id="pulseBuyerStart">—</span><span id="pulseBuyerNow">—</span></div>
+            </div>
+            <div class="pulse-metric pulse-gap">
+              <div class="pulse-metric-label">Negotiation gap</div>
+              <div class="pulse-gap-trail" id="pulseGapTrail">—</div>
+            </div>
+          </div>
+        </div>
+
         <div class="chat-input-row" id="offerRow" style="display:none;">
           <input type="number" id="askInput" placeholder="Enter the seller's asking price">
           <button id="sendBtn" class="primary">Send</button>
@@ -74,19 +101,23 @@
       </div>
 
       <div class="proposal-col">
-        <div id="itemCard" class="item-card-side" style="display:none;">
-          <div class="item-card-label">Negotiating</div>
-          <div class="item-name" id="icName"></div>
-          <div class="item-desc" id="icDesc"></div>
-          <ul class="item-details" id="icDetails"></ul>
-          <div class="item-range" id="icRange"></div>
-          <div class="item-concessions" id="icConcessions"></div>
-        </div>
+        <aside class="negotiation-console">
+          <section id="itemCard" class="console-section console-deal-context" style="display:none;">
+            <div class="console-section-label">Deal Context</div>
+            <div class="item-name" id="icName"></div>
+            <div class="item-cat" id="icCategory"></div>
+            <div class="item-desc" id="icDesc"></div>
+            <ul class="item-details" id="icDetails"></ul>
+            <div class="item-range" id="icRange"></div>
+            <div class="item-concessions" id="icConcessions"></div>
+          </section>
 
-        <aside class="proposal-panel">
-          <div id="proposalCard" class="proposal-card">
-            <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
-          </div>
+          <section class="console-section console-status">
+            <div class="console-section-label">Negotiation Status</div>
+            <div id="proposalCard" class="proposal-card">
+              <div class="proposal-row"><span>Status</span><b id="pStatus">Not started</b></div>
+            </div>
+          </section>
         </aside>
       </div>
     </div>
@@ -96,6 +127,7 @@
 </div>
 
 <script src="/static/negotiation-model.js"></script>
+<script src="/static/statements.js"></script>
 <script src="/static/script.js"></script>
 </body>
 </html>

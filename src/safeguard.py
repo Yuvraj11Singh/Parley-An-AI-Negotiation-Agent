@@ -1,42 +1,78 @@
 """
-safeguard.py — a transparent, rule-based walk-away safeguard layered on top
+safeguard.py — transparent, rule-based walk-away safeguards layered on top
 of a trained buyer agent. Imported by BOTH the live server (app/server.py)
 and the evaluation code (src/evaluate.py) so live behaviour and measured
-behaviour are governed by the exact same rule.
+behaviour are governed by the exact same rules.
 
-This is NOT a learned behaviour. Two retraining attempts (v7, v8) tried to
-teach the agent itself to walk away from an unmovable seller, and both
-failed their acceptance bars elsewhere — from the agent's point of view,
-walking is always partly a guess, since it never observes the seller's
-hidden floor. There is exactly one situation where walking is *not* a
-guess: Parley's own offer is already pinned at its hidden maximum (it is
-physically unable to concede any further) and the seller hasn't moved at
-all while it sat there. In that situation no deal is reachable unless the
-seller moves, so continuing only burns rounds toward a timeout. This module
-checks for exactly that situation and nothing else — every other decision
-in a negotiation is still the agent's own.
+Two rules, checked in this order:
+
+  Rule A (always on) — a DEADLOCK: for the most recent `n` completed
+  rounds, neither side has moved — the seller's ask hasn't dropped by at
+  least deal_tolerance(buyer_max), AND Parley's own offer hasn't risen by
+  at least deal_tolerance(buyer_max). This subsumes the original
+  at-the-limit rule (at the limit, Parley's offer literally cannot rise,
+  so it's always "frozen" there) and also covers a case that rule missed:
+  Parley stuck holding firm well BELOW its maximum in a state the trained
+  policy never learned a real move for (every action tied at 0.0, and
+  deterministic tie-breaking always picks "hold firm" — see agent.py). The
+  original rule required Parley to be AT its limit, so it never fired for
+  these stuck-below-limit negotiations; they just ran out the clock.
+
+  Rule B (OFF by default, RULE_B_ENABLED) — a blunter STUBBORN-SELLER
+  rule: walk once the seller's ask alone has been frozen for `m`
+  consecutive rounds, regardless of what Parley is doing. Uses a distinct
+  walk_reason ("seller_stalled") specifically so its cost (negotiations
+  where Parley was still making real progress and would have closed) can
+  be weighed separately from Rule A's.
 """
 
-# How many consecutive rounds Parley must have been pinned at its maximum,
-# with the seller motionless throughout, before the safeguard fires.
-# ExploitativeSeller (opponent.py) is designed to concede once the buyer has
-# held firm for k = 2-4 rounds — N=4 is the smallest value that clears the
-# top of that range, so the safeguard never cuts off a real concession that
-# was already on its way. Verified in evaluation (deal rate against
-# ExploitativeSeller must not fall below v6's).
-SAFEGUARD_HOLD_ROUNDS = 4
+from .environment import deal_tolerance
+
+SAFEGUARD_HOLD_ROUNDS = 4          # Rule A's N
+RULE_B_ENABLED = False              # Rule B is opt-in, off by default
+RULE_B_STALL_ROUNDS = 6             # Rule B's M
 
 
-def should_walk_away(state, n: int = SAFEGUARD_HOLD_ROUNDS) -> bool:
+def _deadlock_rounds(state) -> int:
+    """How many of the most recent consecutive COMPLETED rounds neither the
+    seller's ask nor Parley's own offer moved by at least
+    deal_tolerance(buyer_max) — same backward-scan over state.history as
+    stall_rounds/limit_rounds (environment.py), combining both conditions
+    with AND instead of tracking them separately. An offer that (abnormally)
+    fell, or an ask that rose, both still count as "frozen" on that side,
+    matching stall_rounds' existing treatment of an ask that rises.
+
+    Counting convention (must hold for the server and evaluate.py to agree
+    — see tests/test_safeguard_consistency.py): state.history holds exactly
+    one entry per completed round, appended only after that round is fully
+    resolved, and this function is always called before the round currently
+    being decided has an entry.
     """
-    True when, for the most recent `n` rounds, Parley's offer has stayed at
-    its maximum (state.limit_rounds >= n) AND the seller's ask hasn't
-    dropped by at least deal_tolerance at any point during that same
-    trailing window (state.stall_rounds >= n).
+    history = state.history
+    if len(history) < 2:
+        return 0
+    tol = deal_tolerance(state.buyer_max)
+    count = 0
+    for i in range(len(history) - 1, 0, -1):
+        prev_offer, prev_ask = history[i - 1][1], history[i - 1][2]
+        curr_offer, curr_ask = history[i][1], history[i][2]
+        seller_frozen = (prev_ask - curr_ask) < tol
+        buyer_frozen = (curr_offer - prev_offer) < tol
+        if seller_frozen and buyer_frozen:
+            count += 1
+        else:
+            break
+    return count
 
-    Both `limit_rounds` and `stall_rounds` are backward-scans over
-    `state.history` already defined on NegotiationState (environment.py) —
-    this function adds no separate tracking and no new rule beyond
-    requiring both streaks to cover the same most-recent `n` rounds.
-    """
-    return state.limit_rounds >= n and state.stall_rounds >= n
+
+def should_walk_away(state, n: int = SAFEGUARD_HOLD_ROUNDS,
+                      rule_b_enabled: bool = RULE_B_ENABLED,
+                      m: int = RULE_B_STALL_ROUNDS):
+    """Returns the walk_reason string if a rule fires this round, else None.
+    Rule A ("safeguard") is checked first; Rule B ("seller_stalled"), only
+    when explicitly enabled, is checked second."""
+    if _deadlock_rounds(state) >= n:
+        return "safeguard"
+    if rule_b_enabled and state.stall_rounds >= m:
+        return "seller_stalled"
+    return None

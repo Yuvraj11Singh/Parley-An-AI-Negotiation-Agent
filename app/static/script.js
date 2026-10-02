@@ -21,6 +21,7 @@ const dbPrefs = document.getElementById('dbPrefs');
 
 const itemCard = document.getElementById('itemCard');
 const icName = document.getElementById('icName');
+const icCategory = document.getElementById('icCategory');
 const icDesc = document.getElementById('icDesc');
 const icDetails = document.getElementById('icDetails');
 const icRange = document.getElementById('icRange');
@@ -41,6 +42,9 @@ let itemQuantity = null;
 let categoryNames = {};
 let openingGap = null;    // set once round 1 resolves — the scale the negotiation-zone bar and phase detector measure against
 let lastGap = null;
+let openingSellerAsk = null;   // round-1 seller ask — the fixed left end of the Pulse's seller-movement bar
+let openingBuyerOffer = null;  // round-1 Parley offer — the fixed left end of the Pulse's position bar
+let gapHistory = [];            // trailing gap values shown in the Pulse's "negotiation gap" trail
 
 let pendingItem = null;
 if (urlParams.get('custom') === '1'){
@@ -61,18 +65,14 @@ fetch('/api/categories')
   })
   .catch(() => {});
 
-function fmtUsd(n){
-  return '$' + Math.round(n).toLocaleString('en-US');
-}
-
 function renderDealBrief(){
   if (!pendingItem || !dealBrief) return;
   dbCategory.textContent = categoryNames[categoryId] || categoryId || '—';
   dbItem.textContent = pendingItem.name || '—';
   dbQty.textContent = pendingItem.quantity ? `${pendingItem.quantity} units` : '—';
   if (pendingItem.reference_price){
-    const perUnit = pendingItem.quantity ? ` (≈ ${fmtUsd(pendingItem.reference_price / pendingItem.quantity)}/unit)` : '';
-    dbTarget.textContent = `${fmtUsd(pendingItem.reference_price)}${perUnit}`;
+    const perUnit = pendingItem.quantity ? ` (≈ ${fmtPrice(pendingItem.reference_price / pendingItem.quantity)}/unit)` : '';
+    dbTarget.textContent = `${fmtPrice(pendingItem.reference_price)}${perUnit}`;
   } else {
     dbTarget.textContent = '—';
   }
@@ -145,67 +145,100 @@ function markCurrentRound(row, outcome){
 // is considering" beat, then Parley's offer eases in. Under reduced motion
 // this collapses to one instant, fully-populated row. ---------------------
 
-async function addRoundRow(round, askVal, buyerOffer, prevOffer, stage, done, outcome){
+// Formats a tweening number as money while it eases from one value to
+// another — tweenNumber (negotiation-model.js-adjacent helper above) writes
+// a plain toFixed(1) string, so Parley's offer gets its own tween that
+// renders through fmtPrice at every frame instead.
+function tweenMoney(el, from, to, duration){
+  if (prefersReducedMotion || from === null || from === undefined || isNaN(from)){
+    el.textContent = fmtPrice(to);
+    return;
+  }
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmtPrice(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(frame);
+    else el.textContent = fmtPrice(to);
+  }
+  requestAnimationFrame(frame);
+}
+
+async function addRoundRow(round, askVal, buyerOffer, prevOffer, stage, done, outcome, statementObj){
   const isWalkDone = done && outcome === 'walk';
   const movement = (prevOffer !== null && !isWalkDone) ? buyerOffer - prevOffer : null;
+  const parleyTag = statementObj ? statementObj.label : `PARLEY · ${stage.label}`;
+  const statementText = statementObj ? statementObj.text : '';
 
   const row = document.createElement('div');
   row.className = 'round-row hero-round round-enter';
   row.innerHTML = `
     <span class="hero-stage-tag ${stage.cls}" style="opacity:0;">${stage.label}</span>
     <div class="round-badge">${round}</div>
-    <div class="side seller-side">
-      <div class="label"><span class="speaker-tag">YOU</span> Seller's ask</div>
-      <div class="value">${askVal.toFixed(1)}</div>
-    </div>
-    <div class="arrow">⇌</div>
-    <div class="side buyer-side">
-      <div class="label"><span class="speaker-tag">PARLEY</span> Offer</div>
-      <div class="value buyer-value"></div>
+    <div class="round-body">
+      <div class="round-seller-line">
+        <span class="speaker-tag">YOU</span>
+        <span class="round-seller-meta">ROUND ${round}</span>
+        <span class="round-seller-value">${fmtPrice(askVal)}</span>
+      </div>
+      <div class="round-seller-caption">Seller's asking price</div>
+      <div class="round-parley-block ${stage.cls}">
+        <div class="parley-tag">${parleyTag}</div>
+        <div class="parley-statement"></div>
+        <div class="parley-offer-value"></div>
+      </div>
     </div>
   `;
   chatThread.appendChild(row);
   markCurrentRound(row, null);
   scrollThreadToBottom();
 
-  const buyerValueEl = row.querySelector('.buyer-value');
+  const statementEl = row.querySelector('.parley-statement');
+  const offerEl = row.querySelector('.parley-offer-value');
   const badgeEl = row.querySelector('.hero-stage-tag');
 
   if (prefersReducedMotion){
-    buyerValueEl.textContent = buyerOffer.toFixed(1);
+    if (statementText) statementEl.textContent = `"${statementText}"`;
+    offerEl.textContent = (outcome === 'walk') ? '' : fmtPrice(buyerOffer);
     badgeEl.style.opacity = '1';
-    if (movement !== null){
+    if (movement !== null && outcome !== 'walk'){
       const m = document.createElement('div');
       m.className = 'offer-movement';
-      m.textContent = `${movement > 0.05 ? '+' : ''}${movement.toFixed(1)} vs last round`;
-      buyerValueEl.after(m);
+      m.textContent = movement > 0.05 ? `+${fmtPrice(movement)} vs last round` : 'No movement';
+      offerEl.after(m);
     }
     if (done) markCurrentRound(row, outcome);
     return;
   }
 
   // beat 1: let the seller's ask register
-  await sleep(260);
+  await sleep(220);
 
-  // beat 2: Parley is considering — a neutral processing cue, not a claim
-  // about what it's "thinking"
-  buyerValueEl.classList.add('thinking');
-  buyerValueEl.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span>';
-  await sleep(520);
+  // beat 2: "Parley is evaluating…" — a neutral processing cue, not a claim
+  // about what it's actually doing internally
+  statementEl.innerHTML = '<span class="thinking-dots"><i></i><i></i><i></i></span> Parley is evaluating…';
+  statementEl.classList.add('thinking');
+  await sleep(380);
 
-  // beat 3: Parley's offer eases in
-  buyerValueEl.classList.remove('thinking');
-  buyerValueEl.textContent = '';
-  tweenNumber(buyerValueEl, prevOffer !== null ? prevOffer : buyerOffer, buyerOffer, 420);
-  await sleep(420);
+  // beat 3: Parley's real tag, statement and offer appear together
+  statementEl.classList.remove('thinking');
+  statementEl.textContent = statementText ? `"${statementText}"` : '';
+  statementEl.classList.add('statement-enter');
+  if (outcome === 'walk'){
+    offerEl.textContent = '';
+  } else {
+    tweenMoney(offerEl, prevOffer !== null ? prevOffer : buyerOffer, buyerOffer, 380);
+  }
+  await sleep(380);
 
   badgeEl.style.opacity = '1';
 
-  if (movement !== null){
+  if (movement !== null && outcome !== 'walk'){
     const m = document.createElement('div');
     m.className = 'offer-movement offer-movement-enter';
-    m.textContent = `${movement > 0.05 ? '+' : ''}${movement.toFixed(1)} vs last round`;
-    buyerValueEl.after(m);
+    m.textContent = movement > 0.05 ? `+${fmtPrice(movement)} vs last round` : 'No movement';
+    offerEl.after(m);
   }
 
   if (done) markCurrentRound(row, outcome);
@@ -236,53 +269,61 @@ function renderOutcome(data, lastAsk){
   if (cls === 'deal'){
     const savings = Math.max(0, data.buyer_max - data.deal_price);
     div.innerHTML = `
-      <div class="outcome-headline">✓ Deal closed at <b>${data.deal_price.toFixed(1)}</b></div>
+      <div class="outcome-headline">✓ Deal closed at <b>${fmtPrice(data.deal_price)}</b></div>
       <div class="outcome-grid">
-        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
-        <div><span>Parley's final offer</span><b>${data.buyer_offer.toFixed(1)}</b></div>
-        <div><span>Parley's hidden max</span><b>${data.buyer_max.toFixed(1)}</b></div>
-        <div><span>Value captured</span><b class="outcome-savings">${savings.toFixed(1)}</b></div>
+        <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
+        <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
+        <div><span>Parley's hidden max</span><b>${fmtPrice(data.buyer_max)}</b></div>
+        <div><span>Value captured</span><b class="outcome-savings">${fmtPrice(savings)}</b></div>
         <div><span>Rounds</span><b>${roundCount}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
       ${termsLine ? `<div class="outcome-explain">${termsLine} — carried with this deal, not negotiated by price.</div>` : ''}
     `;
   } else if (cls === 'walk'){
-    const isSafeguard = data.walk_reason === 'safeguard';
+    const isSafeguard = data.walk_reason === 'safeguard' || data.walk_reason === 'seller_stalled';
     let headline, reasonLine;
     if (isSafeguard){
       // a clearly labelled system rule, not a learned behaviour — must read
-      // that way, not like the agent made a judgment call
+      // that way, not like the agent made a judgment call. The condition is
+      // "neither side moved for N rounds" — mention the hidden maximum ONLY
+      // when this round's at_limit genuinely was true; the safeguard can
+      // (and does) also fire while Parley is still below its maximum.
       headline = 'Walk-away safeguard';
-      reasonLine = `Parley reached its maximum and the seller did not move for ${data.safeguard_hold_rounds} rounds, so no deal was possible.`;
+      reasonLine = data.at_limit
+        ? `Parley reached its maximum and neither side moved for ${data.safeguard_hold_rounds} rounds, so no deal was possible.`
+        : `Neither side moved for ${data.safeguard_hold_rounds} rounds, so no deal was possible from here.`;
     } else {
       // honest, derived reason: how long the seller's ask had actually moved
-      // before Parley stopped — not a fabricated narrative
+      // before Parley stopped — not a fabricated narrative, and never a
+      // claim that Parley was out of room (the agent can choose to walk
+      // before reaching its limit)
       headline = 'Parley walked away from this negotiation';
       const stalledRounds = computeSellerStallRounds(negotiationRecord.rounds);
       reasonLine = stalledRounds >= 2
         ? `The seller's ask hadn't moved for the last ${stalledRounds} rounds before Parley stopped.`
-        : `Parley's hidden maximum for this negotiation couldn't reach the seller's ask.`;
+        : `Parley didn't see a workable agreement from here.`;
     }
     div.innerHTML = `
       <div class="outcome-headline">${headline}</div>
       <div class="outcome-grid outcome-grid-2">
-        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
-        <div><span>Parley's hidden max</span><b>${data.buyer_max.toFixed(1)}</b></div>
+        <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
+        <div><span>Parley's hidden max</span><b>${fmtPrice(data.buyer_max)}</b></div>
         <div><span>Round</span><b>${roundCount} / ${maxRounds}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
-      <div class="outcome-explain">${reasonLine}${isSafeguard ? '' : ' Parley has its own hidden maximum price for this negotiation — generated at random each time you start one. No deal was possible within that limit, so it stopped negotiating.'}</div>
+      <div class="outcome-explain">${reasonLine}</div>
     `;
   } else {
     div.innerHTML = `
       <div class="outcome-headline">Negotiation timed out after ${maxRounds} rounds</div>
       <div class="outcome-grid outcome-grid-2">
-        <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
-        <div><span>Parley's final offer</span><b>${data.buyer_offer.toFixed(1)}</b></div>
+        <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
+        <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
+        <div><span>Rounds</span><b>${roundCount}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
-      <div class="outcome-explain">No agreement was reached within the round limit. Parley's hidden maximum for this negotiation was ${data.buyer_max.toFixed(1)}.</div>
+      <div class="outcome-explain">No agreement was reached within the round limit.</div>
     `;
   }
 
@@ -334,7 +375,7 @@ function renderProposalSkeleton(){
     <div class="proposal-row"><span>Movement</span><b id="pMovement">—</b></div>
     <div class="proposal-row" id="pStatusRow"><span>Current action</span><b id="pStatusText" class="status-badge-text">—</b></div>
     <div class="proposal-row"><span>Negotiation position</span><b id="pPosition">—</b></div>
-    <div class="proposal-row proposal-row-sub"><span>Seller's floor (this scenario)</span><b>${sellerMin.toFixed(1)}</b></div>
+    <div class="proposal-row proposal-row-sub"><span>Seller's floor (this scenario)</span><b>${fmtPrice(sellerMin)}</b></div>
   `;
 }
 
@@ -350,6 +391,7 @@ function agentActivitySentence(stageLabel, done, outcome){
   if (stageLabel === 'COUNTER') return 'Parley is evaluating the latest ask…';
   if (stageLabel === 'CONCESSION') return 'Parley made a concession.';
   if (stageLabel === 'HOLDING FIRM') return 'Parley is holding firm.';
+  if (stageLabel === 'AT LIMIT') return 'Parley is at its maximum.';
   return 'Parley responded.';
 }
 
@@ -372,6 +414,48 @@ function updateNegotiationZone(sellerAsk, buyerOffer){
   zoneFill.style.width = Math.max(0, right - left) + '%';
 }
 
+const PULSE_PHASES = ['OPENING', 'COUNTERING', 'CONVERGING', 'CLOSING'];
+const negotiationPulseEl = document.getElementById('negotiationPulse');
+
+// Answers "where are we in this negotiation right now?" from values already
+// on screen elsewhere — derivePhase() for the stage, and each side's own
+// movement relative to its round-1 starting point for the two bars. Never
+// plots buyer_max (same rule as the existing negotiation-zone bar).
+function updatePulse(phase, sellerAsk, buyerOffer, gapNow){
+  if (!negotiationPulseEl) return;
+  negotiationPulseEl.style.display = 'block';
+
+  const phaseIdx = PULSE_PHASES.indexOf(phase);
+  document.querySelectorAll('#pulsePhases .pulse-phase').forEach((el, i) => {
+    el.classList.toggle('active', i === phaseIdx);
+    el.classList.toggle('done', i < phaseIdx);
+  });
+
+  const span = Math.max(1e-6, openingGap || 1);
+  const sellerProgress = openingSellerAsk !== null ? Math.min(100, Math.max(0, ((openingSellerAsk - sellerAsk) / span) * 100)) : 0;
+  const buyerProgress = openingBuyerOffer !== null ? Math.min(100, Math.max(0, ((buyerOffer - openingBuyerOffer) / span) * 100)) : 0;
+
+  const sellerFill = document.getElementById('pulseSellerFill');
+  const buyerFill = document.getElementById('pulseBuyerFill');
+  if (sellerFill) sellerFill.style.width = sellerProgress + '%';
+  if (buyerFill) buyerFill.style.width = buyerProgress + '%';
+
+  const sellerStartEl = document.getElementById('pulseSellerStart');
+  const sellerNowEl = document.getElementById('pulseSellerNow');
+  const buyerStartEl = document.getElementById('pulseBuyerStart');
+  const buyerNowEl = document.getElementById('pulseBuyerNow');
+  if (sellerStartEl) sellerStartEl.textContent = fmtPrice(openingSellerAsk);
+  if (sellerNowEl) sellerNowEl.textContent = fmtPrice(sellerAsk);
+  if (buyerStartEl) buyerStartEl.textContent = fmtPrice(openingBuyerOffer);
+  if (buyerNowEl) buyerNowEl.textContent = fmtPrice(buyerOffer);
+
+  const trailEl = document.getElementById('pulseGapTrail');
+  if (trailEl){
+    const recent = gapHistory.slice(-4);
+    trailEl.textContent = recent.map(g => fmtPrice(g)).join('  →  ');
+  }
+}
+
 function updateProposalValues(round, sellerAsk, buyerOffer, statusText, statusClass, done, outcome){
   const pRound = document.getElementById('pRound');
   const pSellerAsk = document.getElementById('pSellerAsk');
@@ -388,21 +472,27 @@ function updateProposalValues(round, sellerAsk, buyerOffer, statusText, statusCl
   pRound.textContent = `${round} / ${maxRounds}`;
 
   const movement = (lastProposalOffer !== null && buyerOffer !== null) ? buyerOffer - lastProposalOffer : null;
-  if (pMovement) pMovement.textContent = movement !== null ? `${movement > 0.05 ? '+' : ''}${movement.toFixed(1)}` : '—';
+  if (pMovement) pMovement.textContent = movement !== null ? (movement > 0.05 ? `+${fmtPrice(movement)}` : 'No movement') : '—';
 
   if (sellerAsk !== null){
-    tweenNumber(pSellerAsk, lastProposalSeller, sellerAsk, 350);
+    tweenMoney(pSellerAsk, lastProposalSeller, sellerAsk, 350);
   }
   if (buyerOffer !== null){
-    tweenNumber(pBuyerOffer, lastProposalOffer, buyerOffer, 350);
+    tweenMoney(pBuyerOffer, lastProposalOffer, buyerOffer, 350);
   }
 
   const gapNow = (sellerAsk !== null && buyerOffer !== null) ? Math.max(0, sellerAsk - buyerOffer) : null;
+  let phase = null;
   if (gapNow !== null){
     if (openingGap === null) openingGap = gapNow;
+    if (openingSellerAsk === null) openingSellerAsk = sellerAsk;
+    if (openingBuyerOffer === null) openingBuyerOffer = buyerOffer;
+    phase = derivePhase(round, maxRounds, gapNow, openingGap);
     if (pPosition) pPosition.textContent = derivePosition(gapNow, lastGap);
-    if (pPhase) pPhase.textContent = derivePhase(round, maxRounds, gapNow, openingGap);
+    if (pPhase) pPhase.textContent = phase;
     updateNegotiationZone(sellerAsk, buyerOffer);
+    gapHistory.push(gapNow);
+    updatePulse(phase, sellerAsk, buyerOffer, gapNow);
     lastGap = gapNow;
   }
 
@@ -457,6 +547,9 @@ async function startNegotiation(){
   lastProposalOffer = null;
   openingGap = null;
   lastGap = null;
+  openingSellerAsk = null;
+  openingBuyerOffer = null;
+  gapHistory = [];
 
   negotiationRecord = createNegotiationRecord({
     category: categoryId,
@@ -472,11 +565,12 @@ async function startNegotiation(){
   deskSub.textContent = `Negotiating: ${data.item.name} · ${data.category}`;
 
   icName.textContent = data.item.name;
+  if (icCategory) icCategory.textContent = data.category || '';
   icDesc.textContent = data.item.description;
-  icDetails.innerHTML = (data.item.details || []).map(d => `<li>${d}</li>`).join('');
-  const qtyPart = data.item.quantity ? `Qty ${data.item.quantity} · ` : '';
-  const perUnitPart = data.item.quantity ? ` (≈ ${fmtUsd(data.item.reference_price / data.item.quantity)}/unit)` : '';
-  icRange.textContent = `${qtyPart}Target price ${fmtUsd(data.item.reference_price)}${perUnitPart}`;
+  const detailItems = data.item.quantity ? [`Qty ${data.item.quantity}`, ...(data.item.details || [])] : (data.item.details || []);
+  icDetails.innerHTML = detailItems.map(d => `<li>${d}</li>`).join('');
+  const perUnitPart = data.item.quantity ? ` (≈ ${fmtPrice(data.item.reference_price / data.item.quantity)}/unit)` : '';
+  icRange.textContent = `Target price ${fmtPrice(data.item.reference_price)}${perUnitPart}`;
   if (icConcessions){
     const inv = negotiationRecord.concessionInventory;
     icConcessions.innerHTML = `
@@ -484,7 +578,7 @@ async function startNegotiation(){
       <div class="concession-row"><span>Protected</span>${inv.protected.length ? inv.protected.map(t => `<span class="concession-chip protected">${t}</span>`).join('') : '<span class="concession-chip protected">None recorded</span>'}</div>
     `;
   }
-  itemCard.style.display = 'flex';
+  itemCard.style.display = 'block';
 
   dealBrief.style.display = 'none';
   chatThread.innerHTML = '';
@@ -506,6 +600,7 @@ async function sendOffer(){
   if (isNaN(val)) return;
 
   const prevOffer = negotiationRecord.rounds.length ? negotiationRecord.rounds[negotiationRecord.rounds.length - 1].offer : null;
+  const prevSellerAsk = negotiationRecord.rounds.length ? negotiationRecord.rounds[negotiationRecord.rounds.length - 1].ask : null;
 
   askInput.disabled = true;
   sendBtn.disabled = true;
@@ -527,7 +622,21 @@ async function sendOffer(){
   askInput.value = '';
 
   const stage = deriveRoundState(data.round, prevOffer, data.buyer_offer, data.outcome, data.done, data.at_limit);
-  await addRoundRow(data.round, val, data.buyer_offer, prevOffer, stage, data.done, data.outcome);
+
+  // seeded here (not only in updateProposalValues, called later) because
+  // the statement builder needs the phase before the round row renders
+  const gapNow = Math.max(0, val - data.buyer_offer);
+  if (openingGap === null) openingGap = gapNow;
+  if (openingSellerAsk === null) openingSellerAsk = val;
+  if (openingBuyerOffer === null) openingBuyerOffer = data.buyer_offer;
+  const phase = derivePhase(data.round, maxRounds, gapNow, openingGap);
+
+  const statementObj = buildParleyStatement({
+    stage, round: data.round, offer: data.buyer_offer, sellerAsk: val, prevSellerAsk,
+    atLimit: data.at_limit, walkReason: data.walk_reason, dealPrice: data.deal_price, phase,
+  });
+
+  await addRoundRow(data.round, val, data.buyer_offer, prevOffer, stage, data.done, data.outcome, statementObj);
   pushNegotiationRound(negotiationRecord, {
     roundNumber: data.round,
     sellerAsk: val,
@@ -538,6 +647,8 @@ async function sendOffer(){
     done: data.done,
     atLimit: data.at_limit,
     walkReason: data.walk_reason,
+    statement: statementObj ? statementObj.text : null,
+    statementLabel: statementObj ? statementObj.label : null,
   });
 
   if (data.done){
@@ -547,7 +658,7 @@ async function sendOffer(){
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, true, data.outcome);
     await sleep(250);
     renderOutcome(data, val);
-    finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max, data.walk_reason);
+    finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max, data.walk_reason, data.safeguard_hold_rounds);
     saveNegotiationRecord(negotiationRecord);
   } else {
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, false, null);

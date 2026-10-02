@@ -271,35 +271,64 @@ def submit_offer():
     if seller_ask < session["seller_min"]:
         return jsonify({"error": f"that's below your own minimum of {session['seller_min']:.1f}"}), 400
 
-    state.round += 1
     state.seller_ask = seller_ask
-    # record this round before deciding — limit_rounds/stall_rounds (and so
-    # should_walk_away) read this history, same as environment.py
-    state.history.append((state.round, state.buyer_offer, state.seller_ask, "—"))
 
-    if should_walk_away(state):
+    # agent.act() (and should_walk_away, which also reads state.history) must
+    # see state.round exactly as NegotiationEnv.step() would: act() is always
+    # called BEFORE round is incremented there (round_b for the decision that
+    # PRODUCES round r's result is r-1), so the increment below happens AFTER
+    # this decision, not before it. Doing it the other way around (as this
+    # file used to) makes the agent consult the Q-table one round-bucket
+    # ahead of what training intended, for every served negotiation.
+    #
+    # should_walk_away() reads state.history, which at this point holds one
+    # entry per COMPLETED round only (round r's own entry is appended below,
+    # after r is resolved) — this is the same timing NegotiationEnv.step()
+    # uses (see environment.py), and is what makes the safeguard's counting
+    # identical here and in evaluate.py's safeguard-aware loop. Do not
+    # pre-append a provisional entry for the current round before this check.
+    #
+    # Known, deliberate limitation (not a bug): here, the agent reacts to
+    # the seller_ask just set above — the human's ask the instant it's
+    # submitted. In training and evaluate.py (NegotiationEnv.step()), the
+    # agent instead commits to its concession BEFORE that round's seller
+    # response is revealed; the opponent only responds after the buyer's
+    # move. Frozen or scripted asks (as in the safeguard's own test
+    # scenarios) hide this difference entirely; a live, reactive ask does
+    # not. Left as-is: matching the training convention here would mean the
+    # live agent always reacts to the human's PREVIOUS message instead of
+    # the one just typed, which is a real UX regression for an interactive
+    # demo, not something this fix is meant to change.
+    safeguard_reason = should_walk_away(state)
+    if safeguard_reason:
         action = "WALK"
-        walk_reason = "safeguard"
+        walk_reason = safeguard_reason
     else:
         action = agent.act(state, greedy=True)
         walk_reason = "agent" if action == "WALK" else None
 
+    state.round += 1
+
     if action == "WALK":
         state.done = True
         state.outcome = "walk"
-        state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, "buyer walked away")
+        state.history.append((state.round, state.buyer_offer, state.seller_ask, "buyer walked away"))
         return jsonify(_serialize(state, revealed=True, action=action, walk_reason=walk_reason))
 
     concession = float(action)
     state.buyer_offer = min(state.buyer_max, state.buyer_offer + concession * state.gap)
-    state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, state.history[-1][3])
 
     if state.buyer_offer >= state.seller_ask - deal_tolerance(state.buyer_max):
         state.done = True
         state.outcome = "deal"
         state.deal_price = state.seller_ask
-        state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, f"deal closed @ {state.deal_price:.1f}")
+        state.history.append((state.round, state.buyer_offer, state.seller_ask, f"deal closed @ {state.deal_price:.1f}"))
         return jsonify(_serialize(state, revealed=True, action=action))
+
+    # single append per continuing round, after this round's buyer_offer and
+    # seller_ask are both final — mirrors NegotiationEnv.step()'s own single
+    # append for a non-terminal round
+    state.history.append((state.round, state.buyer_offer, state.seller_ask, "—"))
 
     if state.round >= MAX_ROUNDS:
         state.done = True

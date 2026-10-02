@@ -17,7 +17,7 @@ import random
 from .agent import QLearningAgent
 from .environment import NegotiationEnv
 from .opponent import FixedScheduleSeller, MixedSeller, RandomizedSeller
-from .safeguard import SAFEGUARD_HOLD_ROUNDS, should_walk_away
+from .safeguard import SAFEGUARD_HOLD_ROUNDS, RULE_B_ENABLED, RULE_B_STALL_ROUNDS, should_walk_away
 
 
 def evaluate_against(agent: QLearningAgent, opponent, episodes: int):
@@ -45,34 +45,39 @@ def evaluate_against(agent: QLearningAgent, opponent, episodes: int):
 
 
 def evaluate_against_with_safeguard(agent: QLearningAgent, opponent, episodes: int,
-                                     n: int = SAFEGUARD_HOLD_ROUNDS):
+                                     n: int = SAFEGUARD_HOLD_ROUNDS,
+                                     rule_b_enabled: bool = RULE_B_ENABLED,
+                                     m: int = RULE_B_STALL_ROUNDS):
     """
     Same as evaluate_against, but before each action the same should_walk_away
     check the live server runs is applied — if it fires, "WALK" is used in
     place of the agent's own choice. Reuses NegotiationEnv.step() unchanged,
     so this never touches the environment's rules, only which action gets
-    passed into it. Also separates walk-aways the agent chose itself from
-    ones the safeguard forced, so the two can be reported side by side.
+    passed into it. Separates walk-aways by who/what caused them (the
+    agent's own policy, Rule A's deadlock check, or Rule B's stubborn-seller
+    check) so each can be reported and weighed independently.
     """
     env = NegotiationEnv(opponent)
     deals = 0
     surplus_sum = 0.0
     surplus_count = 0
     walks_agent = 0
-    walks_safeguard = 0
+    walks_rule_a = 0
+    walks_rule_b = 0
     timeouts = 0
-    safeguard_walk_rounds = []
+    rule_a_walk_rounds = []
+    rule_b_walk_rounds = []
 
     for _ in range(episodes):
         state = env.reset()
-        last_was_safeguard = False
+        last_reason = None
         while not state.done:
-            if should_walk_away(state, n):
+            reason = should_walk_away(state, n, rule_b_enabled, m)
+            if reason:
                 action = "WALK"
-                last_was_safeguard = True
             else:
                 action = agent.act(state, greedy=True)
-                last_was_safeguard = False
+            last_reason = reason if reason else ("agent" if action == "WALK" else None)
             state, reward = env.step(action)
 
         if state.outcome == "deal":
@@ -82,9 +87,12 @@ def evaluate_against_with_safeguard(agent: QLearningAgent, opponent, episodes: i
                 surplus_count += 1
                 surplus_sum += max(0.0, min(1.0, reward / zopa))
         elif state.outcome == "walk":
-            if last_was_safeguard:
-                walks_safeguard += 1
-                safeguard_walk_rounds.append(state.round)
+            if last_reason == "safeguard":
+                walks_rule_a += 1
+                rule_a_walk_rounds.append(state.round)
+            elif last_reason == "seller_stalled":
+                walks_rule_b += 1
+                rule_b_walk_rounds.append(state.round)
             else:
                 walks_agent += 1
         else:
@@ -94,10 +102,13 @@ def evaluate_against_with_safeguard(agent: QLearningAgent, opponent, episodes: i
         "deal_rate": deals / episodes,
         "avg_surplus_captured": (surplus_sum / surplus_count) if surplus_count else None,
         "walk_rate_agent": walks_agent / episodes,
-        "walk_rate_safeguard": walks_safeguard / episodes,
+        "walk_rate_safeguard": walks_rule_a / episodes,
+        "walk_rate_seller_stalled": walks_rule_b / episodes,
         "timeout_rate": timeouts / episodes,
-        "avg_safeguard_walk_round": (sum(safeguard_walk_rounds) / len(safeguard_walk_rounds))
-                                     if safeguard_walk_rounds else None,
+        "avg_safeguard_walk_round": (sum(rule_a_walk_rounds) / len(rule_a_walk_rounds))
+                                     if rule_a_walk_rounds else None,
+        "avg_seller_stalled_walk_round": (sum(rule_b_walk_rounds) / len(rule_b_walk_rounds))
+                                          if rule_b_walk_rounds else None,
     }
 
 

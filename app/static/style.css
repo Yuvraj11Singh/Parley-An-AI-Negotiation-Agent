@@ -90,7 +90,7 @@ body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
 .desk-header .sub{ color:var(--ink-dim); font-size:13px; }
 
 .desk-body{
-  display:grid; grid-template-columns: 150px 1fr 280px; gap:18px;
+  display:grid; grid-template-columns: 150px 1fr 310px; gap:18px;
 }
 @media (max-width:1000px){
   .desk-body{ grid-template-columns:1fr; }
@@ -149,8 +149,8 @@ body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
 @media (max-width:600px){ .outcome-grid{ grid-template-columns:repeat(2,1fr); } }
 
 .round-row{
-  display:flex; align-items:center; gap:14px;
-  padding:12px 16px; border-radius:10px;
+  display:flex; align-items:flex-start; gap:14px;
+  padding:14px 16px; border-radius:10px; position:relative;
   background:var(--panel-2); border:1px solid var(--line);
 }
 .round-badge{
@@ -158,29 +158,49 @@ body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
   color:var(--accent); border:1px solid var(--accent-dim);
   display:flex; align-items:center; justify-content:center;
   font-family:var(--mono); font-size:11px; font-weight:700; flex-shrink:0;
+  margin-top:1px;
 }
-.round-row .side{ display:flex; flex-direction:column; gap:2px; flex:1; }
-.round-row .side.buyer-side{ text-align:right; }
-.round-row .label{
-  font-size:9.5px; text-transform:uppercase; letter-spacing:0.6px;
-  color:var(--ink-dim); font-family:var(--sans); font-weight:600;
-}
-.round-row .value{ font-family:var(--mono); font-size:16px; font-weight:600; color:var(--ink); }
-.round-row .seller-side .value{ color:var(--accent); }
-.round-row .arrow{ color:var(--ink-dim); font-size:16px; flex-shrink:0; }
 
 .speaker-tag{
   display:inline-block; font-family:var(--mono); font-size:8.5px; font-weight:700;
   letter-spacing:0.5px; padding:1px 5px; border-radius:4px; margin-right:3px;
+  background:var(--panel-2); color:var(--ink-dim);
 }
-.seller-side .speaker-tag{ background:var(--panel-2); color:var(--ink-dim); }
-.buyer-side .speaker-tag{ background:var(--accent-soft); color:var(--accent); }
 
-/* seller vs. Parley — a small colored marker ahead of each label, on top of
-   the existing left/right + color distinction, so the two sides read
-   unmistakably as two different parties */
-.seller-side .label::before{ content:'● '; color:var(--ink-dim); font-size:7px; }
-.buyer-side .label::before{ content:'● '; color:var(--accent); font-size:7px; }
+/* --- the negotiation transcript: a real conversation, not two number
+   columns. Seller's line is brief; Parley's block carries the contextual
+   statement, with the offer value staying the visually dominant element. */
+.round-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
+.round-seller-line{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.round-seller-meta{
+  font-family:var(--mono); font-size:9.5px; color:var(--ink-dim);
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+.round-seller-value{ margin-left:auto; font-family:var(--mono); font-size:15px; font-weight:600; color:var(--ink); }
+.round-seller-caption{ font-size:10.5px; color:var(--ink-dim); margin-top:-4px; }
+
+.round-parley-block{ border-top:1px dashed var(--line-bright); padding-top:10px; }
+.parley-tag{
+  font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.5px;
+  color:var(--accent); text-transform:uppercase; margin-bottom:6px;
+}
+.round-parley-block.deal .parley-tag{ color:var(--deal); }
+.round-parley-block.walk .parley-tag{ color:var(--walk); }
+.round-parley-block.timeout .parley-tag{ color:var(--timeout); }
+.round-parley-block.limit .parley-tag{ color:var(--limit); }
+.parley-statement{
+  font-size:13px; color:var(--ink); line-height:1.5; margin-bottom:8px;
+  min-height:19px; transition: opacity .2s ease;
+}
+.parley-statement.thinking{ color:var(--ink-dim); font-style:italic; display:flex; align-items:center; gap:6px; }
+.parley-statement.statement-enter{ animation: fadeUp .3s ease-out; }
+.parley-offer-value{
+  font-family:var(--mono); font-size:19px; font-weight:700; color:var(--accent); min-height:24px;
+}
+.round-parley-block.deal .parley-offer-value{ color:var(--deal); }
+.round-parley-block.walk .parley-offer-value{ color:var(--walk); }
+.round-parley-block.timeout .parley-offer-value{ color:var(--timeout); }
+.round-parley-block.limit .parley-offer-value{ color:var(--limit); }
 
 /* round entrance — rounds settle into place rather than snapping in */
 @keyframes roundEnter{
@@ -227,12 +247,23 @@ button.primary:hover{ background:#6b72e8; border-color:#6b72e8; }
 
 .chat-input-row input:disabled{ opacity:0.6; }
 
-/* proposal panel */
-.proposal-panel{
+/* Negotiation Console — one unified right-side panel (Deal Context +
+   Negotiation Status) instead of two separately-bordered stacked cards. */
+.negotiation-console{
   background:var(--panel); border:1px solid var(--line); border-radius:14px;
-  padding:18px; height:fit-content; position:sticky; top:20px;
+  height:fit-content; position:sticky; top:20px; overflow:hidden;
   box-shadow: 0 1px 2px rgba(45,49,66,0.03), 0 8px 20px rgba(45,49,66,0.04);
 }
+.console-section{ padding:18px; }
+.console-section + .console-section{ border-top:1px solid var(--line); }
+.console-section-label{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim);
+  font-weight:700; margin-bottom:12px;
+}
+.console-deal-context .item-name{ margin-top:0; }
+.item-cat{ font-size:11px; color:var(--ink-dim); font-weight:600; margin:-6px 0 10px; }
+
+/* proposal panel (now the "Negotiation Status" console section) */
 .proposal-panel h3{
   font-family:var(--heading); font-size:13px; font-weight:600; margin:0 0 14px;
   color:var(--ink); border-bottom:1px solid var(--line); padding-bottom:12px;
@@ -293,6 +324,44 @@ button.primary:hover{ background:#6b72e8; border-color:#6b72e8; }
 .negotiation-zone-marker.buyer{ background:var(--accent); z-index:2; }
 .negotiation-zone-marker.seller{ background:var(--ink-dim); z-index:1; }
 .negotiation-zone-labels{ display:flex; justify-content:space-between; font-size:9px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.4px; }
+
+/* Negotiation Pulse — compact orientation strip below the transcript:
+   "where are we in this negotiation right now?" Four fixed stages, plus
+   two movement bars and a short gap trail — not an analytics dashboard. */
+.negotiation-pulse{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:14px 16px; margin-bottom:12px;
+  box-shadow: 0 1px 2px rgba(45,49,66,0.03), 0 6px 16px rgba(45,49,66,0.03);
+}
+.pulse-label{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim);
+  font-weight:700; margin-bottom:12px;
+}
+.pulse-phases{ display:flex; justify-content:space-between; position:relative; margin-bottom:18px; padding:0 2px; }
+.pulse-phases::before{
+  content:''; position:absolute; top:5px; left:6%; right:6%; height:2px; background:var(--line); z-index:0;
+}
+.pulse-phase{
+  position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:7px;
+  font-size:10px; font-weight:600; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.3px;
+  flex:1;
+}
+.pulse-phase::before{
+  content:''; width:10px; height:10px; border-radius:50%; background:var(--panel); border:2px solid var(--line-bright);
+  transition: background-color .25s ease, border-color .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+.pulse-phase.done::before{ background:var(--accent-dim); border-color:var(--accent-dim); }
+.pulse-phase.active{ color:var(--accent); }
+.pulse-phase.active::before{ background:var(--accent); border-color:var(--accent); transform:scale(1.3); box-shadow:0 0 0 4px var(--accent-soft); }
+
+.pulse-metrics{ display:flex; flex-direction:column; gap:11px; }
+.pulse-metric-label{ font-size:10px; color:var(--ink-dim); font-weight:600; margin-bottom:5px; }
+.pulse-metric-bar{ height:5px; border-radius:4px; background:var(--panel-2); border:1px solid var(--line); overflow:hidden; }
+.pulse-metric-fill{ height:100%; border-radius:4px; width:0; transition: width .4s ease; }
+.pulse-metric-fill.seller{ background:var(--ink-dim); }
+.pulse-metric-fill.buyer{ background:var(--accent); }
+.pulse-metric-vals{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; color:var(--ink-dim); margin-top:3px; }
+.pulse-gap-trail{ font-family:var(--mono); font-size:12px; color:var(--ink); font-weight:600; }
 
 footer{
   color:var(--ink-dim); font-size:11.5px; text-align:center; margin-top:24px;
@@ -708,6 +777,12 @@ body:has(.landing){
 .chat-text{ font-size:13px; color:var(--ink); }
 .chat-text b{ font-family:var(--mono); color:var(--accent); }
 .chat-bubble.buyer .chat-text b{ color:var(--ink); }
+.chat-text-label{
+  font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.5px;
+  color:var(--accent); text-transform:uppercase; margin-bottom:4px;
+}
+.chat-text-value{ margin-top:4px; }
+.chat-text-value b{ font-size:14px; }
 
 /* let dashboard views use the full available width */
 .dash-view{ max-width:none; }
@@ -1025,7 +1100,9 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
   }
   .orb-1, .orb-2, .orb-3, .live-dot, .ticker-row, .btn-primary-large::after, .hero-status-dot,
   #heroPreviewStage, .hero-round, .hero-stage-tag, .status-badge-text, .proposal-row b,
-  .outcome-card, .negotiation-zone-fill, .negotiation-zone-marker{
+  .outcome-card, .negotiation-zone-fill, .negotiation-zone-marker,
+  .parley-statement, .parley-statement.statement-enter, .offer-movement-enter,
+  .pulse-phase::before, .pulse-metric-fill{
     animation:none !important; transition:none !important;
   }
   #heroPreviewStage.hero-fade-out{ opacity:1 !important; }

@@ -61,6 +61,15 @@ class QLearningAgent:
         self.round_cost = 0.0
         self.timeout_penalty = 0.0
 
+        # diagnostic-only counters: how often a greedy (served/evaluation)
+        # decision landed on a state where every action is tied (in
+        # practice: never visited during training, so all Q-values are
+        # still 0.0). Not saved/loaded, never read by act() itself — purely
+        # for reporting how often the deterministic tie-break in greedy mode
+        # (see act()) actually matters.
+        self.greedy_calls = 0
+        self.greedy_full_tie_calls = 0
+
         # Q[round][gap][stall][limit] -> list of action values. Always
         # stored 5-D internally, even when a feature is off (that axis's
         # effective size is then 1) — keeps act()/end_episode() branch-free
@@ -125,7 +134,23 @@ class QLearningAgent:
             qs = self.Q[round_b][gap_b][stall_b][limit_b]
             max_q = max(qs)
             best = [i for i, q in enumerate(qs) if q == max_q]
-            action_idx = random.choice(best)
+            if greedy:
+                # served/evaluation: deterministic — the lowest-index tied
+                # action (ACTIONS[0] == 0.0, hold firm, when every action is
+                # tied). A frozen, greedy policy that still rolled dice among
+                # ties wasn't actually frozen; the safeguard already handles
+                # the hopeless at-limit case, so holding firm is the safe
+                # default here, not a random guess including WALK.
+                action_idx = min(best)
+                self.greedy_calls += 1
+                if len(best) == len(ACTIONS):
+                    self.greedy_full_tie_calls += 1
+            else:
+                # training: unchanged — random tie-breaking is part of how
+                # exploration gathers experience, and retraining is out of
+                # scope here, so this path must keep behaving exactly as it
+                # always has.
+                action_idx = random.choice(best)
 
         if not greedy:
             self._trajectory.append((round_b, gap_b, stall_b, limit_b, action_idx))

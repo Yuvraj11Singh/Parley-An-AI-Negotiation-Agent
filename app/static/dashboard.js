@@ -65,8 +65,8 @@ function loadAuditTrail(filterText = ''){
 
 function renderAuditListItem(r){
   const time = new Date(r.timestamp).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-  const isSafeguardWalk = r.outcome === 'walk' && r.walkReason === 'safeguard';
-  const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice?.toFixed(1)}` : isSafeguardWalk ? 'Safeguard walk-away' : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
+  const isSafeguardWalk = r.outcome === 'walk' && (r.walkReason === 'safeguard' || r.walkReason === 'seller_stalled');
+  const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${fmtPrice(r.dealPrice)}` : isSafeguardWalk ? 'Safeguard walk-away' : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
   const badgeClass = r.outcome === 'deal' ? 'deal' : isSafeguardWalk ? 'walk-safeguard' : r.outcome === 'walk' ? 'walk' : 'timeout';
   const selected = r.id === selectedAuditId ? 'selected' : '';
   return `
@@ -91,23 +91,44 @@ function renderAuditDetail(r){
   html += `<div class="chat-sys"><span class="chat-sys-time">${fmtTime(r.startedAt)}</span> Negotiation started</div>`;
 
   r.rounds.forEach(row => {
+    // records saved before the negotiation-language system existed never
+    // captured a statement — shown as numbers only, never generated after
+    // the fact
+    const buyerText = row.statement
+      ? `<div class="chat-text-label">${row.statementLabel || 'PARLEY'}</div><div class="chat-text">"${row.statement}"</div><div class="chat-text chat-text-value"><b>${fmtPrice(row.offer)}</b></div>`
+      : `<div class="chat-text">Countered with <b>${fmtPrice(row.offer)}</b></div>`;
     html += `
       <div class="chat-bubble seller">
         <div class="chat-meta">You · Round ${row.round} <span>${fmtTime(row.at)}</span></div>
-        <div class="chat-text">Asked for <b>${row.ask.toFixed(1)}</b></div>
+        <div class="chat-text">Asked for <b>${fmtPrice(row.ask)}</b></div>
       </div>
       <div class="chat-bubble buyer">
         <div class="chat-meta">Buyer agent · Round ${row.round} <span>${fmtTime(row.at)}</span></div>
-        <div class="chat-text">Countered with <b>${row.offer.toFixed(1)}</b></div>
+        ${buyerText}
       </div>
     `;
   });
 
+  // the safeguard's real condition is "neither side moved for N rounds" —
+  // it can fire with Parley still below its maximum, so the maximum is only
+  // mentioned when the final round's at_limit genuinely was true (older
+  // records never captured atLimit, so this honestly falls back to the
+  // generic phrasing rather than guessing)
+  const lastRound = r.rounds.length ? r.rounds[r.rounds.length - 1] : null;
+  const wasAtLimit = !!(lastRound && lastRound.atLimit);
+  const holdRounds = r.safeguardHoldRounds;
+
   let outcomeText, cls;
-  if (r.outcome === 'deal'){ cls='deal'; outcomeText = `Deal closed at <b>${r.dealPrice?.toFixed(1)}</b> — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
-  else if (r.outcome === 'walk' && r.walkReason === 'safeguard'){ cls='walk-safeguard'; outcomeText = `Walk-away safeguard fired — Parley's offer was pinned at its hidden max (<b>${r.buyerMax?.toFixed(1)}</b>) and the seller hadn't moved`; }
-  else if (r.outcome === 'walk'){ cls='walk'; outcomeText = `Buyer walked away — hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
-  else { cls='timeout'; outcomeText = `Timed out after ${r.rounds.length} rounds — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
+  if (r.outcome === 'deal'){ cls='deal'; outcomeText = `Deal closed at <b>${fmtPrice(r.dealPrice)}</b> — buyer's hidden max was <b>${fmtPrice(r.buyerMax)}</b>`; }
+  else if (r.outcome === 'walk' && (r.walkReason === 'safeguard' || r.walkReason === 'seller_stalled')){
+    cls='walk-safeguard';
+    const roundsPhrase = holdRounds ? `${holdRounds} rounds` : 'several rounds';
+    outcomeText = wasAtLimit
+      ? `Walk-away safeguard fired — Parley reached its hidden max (<b>${fmtPrice(r.buyerMax)}</b>) and neither side moved for ${roundsPhrase}`
+      : `Walk-away safeguard fired — neither side moved for ${roundsPhrase}`;
+  }
+  else if (r.outcome === 'walk'){ cls='walk'; outcomeText = `Buyer walked away — hidden max was <b>${fmtPrice(r.buyerMax)}</b>`; }
+  else { cls='timeout'; outcomeText = `Timed out after ${r.rounds.length} rounds`; }
   html += `<div class="chat-sys ${cls}"><span class="chat-sys-time">${fmtTime(r.timestamp)}</span> ${outcomeText}</div>`;
   html += `</div>`;
 

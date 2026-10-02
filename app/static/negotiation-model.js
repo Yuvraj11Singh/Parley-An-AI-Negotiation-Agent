@@ -18,6 +18,18 @@
 
 const NEGOTIATION_SCHEMA_VERSION = 2;
 
+// --- price formatting --------------------------------------------------
+// Display only — never touches the value sent to or stored from the
+// backend. Every price shown anywhere on the Deal Desk, in statements, or
+// in the Audit Trail goes through this one function. Named fmtPrice (not
+// fmtMoney) deliberately — dashboard.js already defines its own fmtMoney
+// for the Dashboard home view's big numbers, with different rounding
+// behavior; this stays out of its way rather than silently shadowing it.
+function fmtPrice(n){
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // --- round-level state derivation (business-level only) --------------------
 // Unchanged behavior from the existing Deal Desk — relocated here so it's
 // computed in exactly one place as more parts of the app come to need it.
@@ -38,7 +50,7 @@ function deriveRoundState(roundNumber, prevOffer, newOffer, outcome, done, atLim
 
 // --- per-round telemetry (Section 4.4) --------------------------------------
 // Everything Section 4.4 asks for, computed once per round.
-function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }){
+function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason, statement }){
   const state = deriveRoundState(roundNumber, prevOffer, agentOffer, outcome, done, atLimit);
   return {
     roundNumber,
@@ -52,9 +64,15 @@ function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, ac
     timestamp: new Date().toISOString(),
     outcome: done ? outcome : null,
     atLimit: !!atLimit,
-    // "agent" | "safeguard" | null — null (including for records recorded
-    // before this field existed) is read as an agent walk, never a guess
+    // "agent" | "safeguard" | "seller_stalled" | null — null (including for
+    // records recorded before this field existed) is read as an agent walk,
+    // never a guess
     walkReason: (outcome === 'walk' && done) ? (walkReason || 'agent') : null,
+    // the exact words shown on the Deal Desk for this round, so the Audit
+    // Trail replays the same statement rather than regenerating one —
+    // undefined/missing on records saved before this feature existed,
+    // and deliberately never backfilled (see normalizeNegotiationRecord)
+    statement: statement || null,
   };
 }
 
@@ -102,20 +120,30 @@ function createNegotiationRecord({ category, itemId, itemName, referencePrice, q
   };
 }
 
-function pushNegotiationRound(record, { roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }){
-  // v1 shape, exactly as before
-  record.rounds.push({ round: roundNumber, ask: sellerAsk, offer: agentOffer, at: new Date().toISOString() });
+function pushNegotiationRound(record, { roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason, statement, statementLabel }){
+  // v1 shape, plus the two additive fields dashboard.js's Audit Trail reads
+  // directly (it never goes through normalizeNegotiationRecord) — old
+  // records simply won't have these keys, which is exactly the "not
+  // recorded" signal the display logic checks for
+  record.rounds.push({
+    round: roundNumber, ask: sellerAsk, offer: agentOffer, at: new Date().toISOString(),
+    statement: statement || null, statementLabel: statementLabel || null, atLimit: !!atLimit,
+  });
   // v2 telemetry, additive
-  record.telemetry.push(buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }));
+  record.telemetry.push(buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason, statement }));
 }
 
-function finalizeNegotiationRecord(record, outcome, dealPrice, buyerMax, walkReason){
+function finalizeNegotiationRecord(record, outcome, dealPrice, buyerMax, walkReason, safeguardHoldRounds){
   record.outcome = outcome;
   record.dealPrice = dealPrice || null;
   record.buyerMax = buyerMax || null;
-  // "agent" | "safeguard" | null — null is only possible for outcomes other
-  // than 'walk'; a missing value on an old record is read as an agent walk
+  // "agent" | "safeguard" | "seller_stalled" | null — null is only possible
+  // for outcomes other than 'walk'; a missing value on an old record is
+  // read as an agent walk
   record.walkReason = outcome === 'walk' ? (walkReason || 'agent') : null;
+  // only meaningful when walkReason is "safeguard"/"seller_stalled" — null
+  // on older records, which the display logic reads as "not recorded"
+  record.safeguardHoldRounds = (outcome === 'walk' && safeguardHoldRounds) ? safeguardHoldRounds : null;
 
   record.finalPrice = outcome === 'deal' ? (dealPrice || null) : null;
   record.valueCaptured = (outcome === 'deal' && dealPrice != null && buyerMax != null)
@@ -154,6 +182,9 @@ function normalizeNegotiationRecord(raw){
       // the honest "not recorded" defaults, not guesses
       atLimit: r.atLimit ?? false,
       walkReason: isLast ? (raw.walkReason || 'agent') : null,
+      // records saved before the negotiation-language system existed never
+      // captured this — left null, never generated after the fact
+      statement: r.statement || null,
     });
   });
   return {
@@ -234,13 +265,22 @@ function derivePosition(gapNow, gapPrev){
   return 'Stable';
 }
 
+// Named thresholds for the Negotiation Pulse's 4-stage progression
+// (OPENING -> COUNTERING -> CONVERGING -> CLOSING), the only inputs
+// derivePhase() uses. Both are fractions, not absolute prices, so they
+// apply the same way regardless of the deal's price scale.
+const PULSE_CLOSING_GAP_FRACTION = 0.05;    // gap has closed to <=5% of its round-1 size
+const PULSE_CLOSING_ROUND_FRACTION = 0.85;  // or we're past 85% of the round budget
+const PULSE_CONVERGING_GAP_FRACTION = 0.35; // gap has closed to <=35% of its round-1 size
+
+// Deterministic: the same (round, gapNow, openingGap) always returns the
+// same phase. "Exploration"/"Exploring" is deliberately never used here —
+// the served policy is frozen and greedy and never explores during play.
 function derivePhase(round, maxRounds, gapNow, openingGap){
   if (round <= 1) return 'OPENING';
   const roundFrac = round / Math.max(1, maxRounds);
   const gapFrac = openingGap > 0 ? Math.max(0, gapNow) / openingGap : 0;
-  if (gapFrac <= 0.05 || roundFrac >= 0.85) return 'CLOSING';
-  if (gapFrac <= 0.35) return 'CONVERGENCE';
-  // the served policy is frozen and greedy and never explores during play —
-  // "EARLY ROUNDS" describes what's actually happening, "EXPLORATION" doesn't
-  return 'EARLY ROUNDS';
+  if (gapFrac <= PULSE_CLOSING_GAP_FRACTION || roundFrac >= PULSE_CLOSING_ROUND_FRACTION) return 'CLOSING';
+  if (gapFrac <= PULSE_CONVERGING_GAP_FRACTION) return 'CONVERGING';
+  return 'COUNTERING';
 }
