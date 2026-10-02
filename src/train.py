@@ -28,11 +28,16 @@ def build_opponent(kind: str, toughness: str):
 
 def train(episodes: int, opponent_kind: str, toughness: str, out_path: str,
           log_path: str = None, log_every: int = 100,
-          round_cost: float = 0.0, use_stall_feature: bool = True):
+          timeout_penalty: float = 0.0, use_stall_feature: bool = True, use_limit_feature: bool = True):
     opponent = build_opponent(opponent_kind, toughness)
     env = NegotiationEnv(opponent)
-    agent = QLearningAgent(use_stall_feature=use_stall_feature)
-    agent.round_cost = round_cost  # carried through to save() for the record; act()/end_episode() never read it
+    agent = QLearningAgent(use_stall_feature=use_stall_feature, use_limit_feature=use_limit_feature)
+    # v7's per-round cost is gone entirely (round_cost stays 0 — applied to
+    # every outcome including deals, it pushed the agent to rush all
+    # negotiations). v8 only shapes TIMEOUT, which is otherwise reward-free
+    # and therefore indistinguishable from an early WALK.
+    agent.round_cost = 0.0
+    agent.timeout_penalty = timeout_penalty
 
     rows = []
     deals = 0
@@ -45,11 +50,11 @@ def train(episodes: int, opponent_kind: str, toughness: str, out_path: str,
         while not state.done:
             action = agent.act(state)
             state, reward = env.step(action)
-        # round_cost shapes the TRAINING target only — environment.py's raw
-        # `reward` (used below for deal-rate/surplus logging, and by
-        # evaluate.py) is never touched, so evaluation numbers stay
-        # directly comparable across cost settings.
-        final_reward = reward - round_cost * state.round
+        # timeout_penalty shapes the TRAINING target only — environment.py's
+        # raw `reward` (used below for deal-rate/surplus logging, and by
+        # evaluate.py) is never touched, so evaluation numbers stay directly
+        # comparable across versions.
+        final_reward = -timeout_penalty if state.outcome == "timeout" else reward
         agent.end_episode(final_reward)
 
         if state.outcome == "deal":
@@ -94,12 +99,15 @@ if __name__ == "__main__":
     parser.add_argument("--log", default=None, help="optional CSV path to log training curve")
     parser.add_argument("--seed", type=int, default=42,
                          help="random seed, for reproducible training runs")
-    parser.add_argument("--round-cost", type=float, default=0.0,
-                         help="per-round cost subtracted from the final episode reward before the Monte Carlo update (v7)")
+    parser.add_argument("--timeout-penalty", type=float, default=0.0,
+                         help="reward applied as -timeout_penalty when an episode times out, instead of the usual 0 (v8)")
     parser.add_argument("--no-stall-feature", action="store_true",
                          help="disable the stall-count state dimension (v7) and train a v6-shaped 3-D Q-table")
+    parser.add_argument("--no-limit-feature", action="store_true",
+                         help="disable the at-limit state dimension (v8)")
     args = parser.parse_args()
 
     random.seed(args.seed)
     train(args.episodes, args.opponent, args.toughness, args.out, args.log,
-          round_cost=args.round_cost, use_stall_feature=not args.no_stall_feature)
+          timeout_penalty=args.timeout_penalty, use_stall_feature=not args.no_stall_feature,
+          use_limit_feature=not args.no_limit_feature)

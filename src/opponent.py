@@ -96,25 +96,44 @@ class StubbornSeller(BaseSeller):
     added in v7 so the agent sees genuinely immovable sellers during
     training, not just ones who concede slowly.
 
-    The markup is drawn relative to `seller_min` only (never `buyer_max`,
-    which stays private) — but because the two are drawn independently
-    from overlapping ranges, a meaningful share of episodes naturally end
-    up with this seller's ask fixed above `buyer_max`, where no deal is
-    reachable at all. In those episodes the only good response is to walk
-    away rather than concede toward a price nobody will ever reach.
+    The opening markup is drawn relative to `seller_min` only (never
+    `buyer_max`, which stays private) — but because the two are drawn
+    independently from overlapping ranges, a meaningful share of episodes
+    naturally end up with this seller's ask fixed above `buyer_max`, where
+    no deal is reachable at all.
+
+    v8 adds a NARROW-GAP mode (~40% of episodes): the v7 report found the
+    agent's original failure case — a seller frozen just barely above
+    buyer_max — almost never occurred under the markup-only draw above, so
+    the agent never learned to recognize it. In narrow-gap episodes, once
+    the buyer's first offer reveals enough of the negotiation for a
+    response (round 2 onward — `respond()` is the only place with access to
+    `state.buyer_max`), the ask snaps to and freezes at
+    `buyer_max * (1 + u)` with u drawn from a few percent above buyer_max,
+    and — unlike the normal mode — never makes even a rare small move
+    afterward. The other 60% of episodes keep the exact v7 behavior.
     """
 
     def __init__(self, markup_range=(0.30, 0.75), rare_move_chance=0.10,
-                 rare_move_fraction=(0.01, 0.03)):
+                 rare_move_fraction=(0.01, 0.03), narrow_gap_chance=0.40,
+                 narrow_gap_range=(0.003, 0.05)):
         self.markup_range = markup_range
         self.rare_move_chance = rare_move_chance
         self.rare_move_fraction = rare_move_fraction
+        self.narrow_gap_chance = narrow_gap_chance
+        self.narrow_gap_range = narrow_gap_range
         self._seller_min = None
         self._ask = None
+        self._narrow_gap_mode = False
+        self._narrow_gap_u = None
+        self._narrow_gap_applied = False
 
     def reset(self, seller_min: float) -> None:
         self._seller_min = seller_min
         self._ask = None
+        self._narrow_gap_mode = random.random() < self.narrow_gap_chance
+        self._narrow_gap_u = random.uniform(*self.narrow_gap_range) if self._narrow_gap_mode else None
+        self._narrow_gap_applied = False
 
     def opening_ask(self, seller_min: float) -> float:
         markup = random.uniform(*self.markup_range)
@@ -122,6 +141,11 @@ class StubbornSeller(BaseSeller):
         return self._ask
 
     def respond(self, state) -> float:
+        if self._narrow_gap_mode:
+            if not self._narrow_gap_applied:
+                self._ask = state.buyer_max * (1 + self._narrow_gap_u)
+                self._narrow_gap_applied = True
+            return self._ask  # fully frozen — no rare moves once in narrow-gap mode
         if random.random() < self.rare_move_chance:
             frac = random.uniform(*self.rare_move_fraction)
             self._ask = max(self._seller_min, self._ask - frac * (self._ask - state.buyer_offer))

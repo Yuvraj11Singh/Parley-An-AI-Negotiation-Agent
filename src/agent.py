@@ -1,17 +1,24 @@
 """
 agent.py — the buyer's tabular Q-learning agent.
 
-State is (round bucket, gap bucket, stall bucket) where gap is the seller's
-current ask minus buyer's current offer, measured as a fraction of the
-buyer's own max price and discretized — this keeps the state scale-invariant
-across price ranges (a $5 gap on a $50 deal and a $5,000 gap on a
-$50,000 deal look identical to the agent). The stall bucket (added in v7)
-tracks how many consecutive recent rounds the seller's ask has failed to
-move, so the agent can tell a stubborn seller apart from a cooperative one
-— something round/gap alone cannot express. Reward only arrives at the end
-of a negotiation (deal surplus, or 0, minus v7's small round cost), so the
-agent updates its whole round-by-round trajectory using a Monte Carlo
-return once the episode finishes, rather than bootstrapping mid-episode.
+State is (round bucket, gap bucket, stall bucket, limit bucket):
+  - gap: seller's current ask minus buyer's current offer, as a fraction of
+    the buyer's own max price — scale-invariant across price ranges.
+  - stall (v7): how many consecutive recent rounds the seller's ask has
+    failed to move, so the agent can tell a stubborn seller apart from a
+    cooperative one.
+  - limit (v8): how many consecutive recent rounds Parley's own offer has
+    been sitting at its maximum. At the limit, conceding is literally
+    impossible, so the only real choices are waiting or walking — this
+    disambiguates "tiny gap about to close" from "tiny gap that can never
+    close", which the gap feature alone cannot (both look like a small
+    relative gap; only tracking how long the buyer has been stuck there
+    distinguishes them).
+
+Reward only arrives at the end of a negotiation (deal surplus, 0 for a
+walk, or v8's timeout penalty for a timeout), so the agent updates its
+whole round-by-round trajectory using a Monte Carlo return once the
+episode finishes, rather than bootstrapping mid-episode.
 """
 
 import json
@@ -23,16 +30,17 @@ from .environment import ACTIONS, MAX_ROUNDS
 GAP_BUCKETS = 24
 GAP_STEP = 0.05   # each bucket is 5% of the buyer's own max price
 
-STALL_BUCKETS = 5  # 0, 1, 2, 3-4, 5+
+STALL_BUCKETS = 5   # 0, 1, 2, 3-4, 5+
+LIMIT_BUCKETS = 3   # 0 (below limit), 1 (at limit 1-2 rounds), 2 (at limit 3+ rounds)
 
-MODEL_VERSION = 2  # 2 = adds the stall-count state dimension (v7+)
+MODEL_VERSION = 3  # 3 = adds the at-limit state dimension + visit counts (v8+)
 
 
 class QLearningAgent:
     def __init__(self, alpha: float = 0.15, gamma: float = 0.92,
                  epsilon_start: float = 0.3, epsilon_min: float = 0.03,
                  epsilon_decay: float = 0.999, max_rounds: int = MAX_ROUNDS,
-                 use_stall_feature: bool = True):
+                 use_stall_feature: bool = True, use_limit_feature: bool = True):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon_start
@@ -43,23 +51,34 @@ class QLearningAgent:
 
         self.use_stall_feature = use_stall_feature
         self.stall_buckets_eff = STALL_BUCKETS if use_stall_feature else 1
+        self.use_limit_feature = use_limit_feature
+        self.limit_buckets_eff = LIMIT_BUCKETS if use_limit_feature else 1
 
-        # round_cost is a training-time hyperparameter; the agent itself
-        # never reads it — it's carried here only so it round-trips into
-        # the saved model's metadata for reproducibility.
+        # round_cost (v7) and timeout_penalty (v8) are training-time
+        # hyperparameters; the agent itself never reads them during act() —
+        # they're carried here only so they round-trip into the saved
+        # model's metadata for reproducibility.
         self.round_cost = 0.0
+        self.timeout_penalty = 0.0
 
-        # Q[round_bucket][gap_bucket][stall_bucket] -> list of action values.
-        # Always stored 4-D internally, even when the stall feature is off
-        # (stall_buckets_eff=1 then) — this keeps act()/end_episode() free
-        # of branching, and lets a v6 (3-D, no-stall) table be loaded by
-        # wrapping each gap bucket's action list in a length-1 stall axis.
-        self.Q = self._blank_q()
+        # Q[round][gap][stall][limit] -> list of action values. Always
+        # stored 5-D internally, even when a feature is off (that axis's
+        # effective size is then 1) — keeps act()/end_episode() branch-free
+        # and lets older (3-D v6, 4-D v7) tables be loaded by wrapping the
+        # missing trailing axes as length-1.
+        self.Q = self._blank_table(0.0)
+        self.N = self._blank_table(0)  # visit counts, same shape as Q
         self._trajectory = []  # cleared at the start of each episode
 
-    def _blank_q(self):
+    def _blank_table(self, fill):
         return [
-            [[[0.0] * len(ACTIONS) for _ in range(self.stall_buckets_eff)] for _ in range(GAP_BUCKETS)]
+            [
+                [
+                    [[fill] * len(ACTIONS) for _ in range(self.limit_buckets_eff)]
+                    for _ in range(self.stall_buckets_eff)
+                ]
+                for _ in range(GAP_BUCKETS)
+            ]
             for _ in range(self.round_buckets)
         ]
 
@@ -81,6 +100,16 @@ class QLearningAgent:
             return 3          # 3-4
         return 4               # 5+
 
+    def _limit_to_bucket(self, state) -> int:
+        if not self.use_limit_feature:
+            return 0
+        n = state.limit_rounds
+        if n == 0:
+            return 0          # below limit
+        if n <= 2:
+            return 1          # at limit 1-2 rounds
+        return 2               # at limit 3+ rounds
+
     def start_episode(self):
         self._trajectory = []
 
@@ -88,28 +117,30 @@ class QLearningAgent:
         round_b = min(self.round_buckets - 1, state.round)
         gap_b = self._gap_to_bucket(state)
         stall_b = self._stall_to_bucket(state)
+        limit_b = self._limit_to_bucket(state)
 
         if not greedy and random.random() < self.epsilon:
             action_idx = random.randrange(len(ACTIONS))
         else:
-            qs = self.Q[round_b][gap_b][stall_b]
+            qs = self.Q[round_b][gap_b][stall_b][limit_b]
             max_q = max(qs)
             best = [i for i, q in enumerate(qs) if q == max_q]
             action_idx = random.choice(best)
 
         if not greedy:
-            self._trajectory.append((round_b, gap_b, stall_b, action_idx))
+            self._trajectory.append((round_b, gap_b, stall_b, limit_b, action_idx))
 
         return ACTIONS[action_idx]
 
     def end_episode(self, final_reward: float):
         """Monte Carlo backward update using the episode's terminal reward
-        (already including v7's round-cost shaping, if any — applied by the
-        caller, not here; see train.py)."""
+        (already including any reward shaping from the caller — see
+        train.py; this method itself is shaping-agnostic)."""
         G = final_reward
-        for round_b, gap_b, stall_b, action_idx in reversed(self._trajectory):
-            q = self.Q[round_b][gap_b][stall_b][action_idx]
-            self.Q[round_b][gap_b][stall_b][action_idx] = q + self.alpha * (G - q)
+        for round_b, gap_b, stall_b, limit_b, action_idx in reversed(self._trajectory):
+            q = self.Q[round_b][gap_b][stall_b][limit_b][action_idx]
+            self.Q[round_b][gap_b][stall_b][limit_b][action_idx] = q + self.alpha * (G - q)
+            self.N[round_b][gap_b][stall_b][limit_b][action_idx] += 1
             G *= self.gamma
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
@@ -120,12 +151,15 @@ class QLearningAgent:
             "gap_buckets": GAP_BUCKETS,
             "use_stall_feature": self.use_stall_feature,
             "stall_buckets": self.stall_buckets_eff,
+            "use_limit_feature": self.use_limit_feature,
+            "limit_buckets": self.limit_buckets_eff,
             "max_rounds": self.max_rounds,
             "round_cost": self.round_cost,
+            "timeout_penalty": self.timeout_penalty,
         }
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
-            json.dump({"Q": self.Q, "epsilon": self.epsilon, "meta": meta}, f)
+            json.dump({"Q": self.Q, "N": self.N, "epsilon": self.epsilon, "meta": meta}, f)
 
     def load(self, path: str):
         with open(path) as f:
@@ -133,13 +167,15 @@ class QLearningAgent:
 
         meta = data.get("meta")
         if meta is None:
-            # v6 and earlier: no metadata was ever written. Assume the only
-            # config that era could have used, and wrap the 3-D Q table
-            # ([round][gap][action]) into this agent's 4-D shape with a
-            # single stall bucket, so act()/end_episode() stay branch-free.
+            # v6 and earlier: no metadata was ever written, Q is 3-D
+            # ([round][gap][action]). Wrap into this agent's 5-D shape with
+            # a single stall bucket and a single limit bucket.
             self.use_stall_feature = False
             self.stall_buckets_eff = 1
+            self.use_limit_feature = False
+            self.limit_buckets_eff = 1
             self.round_cost = 0.0
+            self.timeout_penalty = 0.0
             raw_Q = data["Q"]
             if len(raw_Q[0][0]) != len(ACTIONS):
                 raise ValueError(
@@ -148,7 +184,15 @@ class QLearningAgent:
                     f"({len(ACTIONS)}) — refusing to load a table that would "
                     f"silently misinterpret action indices."
                 )
-            self.Q = [[[action_values] for action_values in round_row] for round_row in raw_Q]
+            new_Q = []
+            for round_row in raw_Q:
+                new_round = []
+                for action_values in round_row:
+                    new_round.append([[list(action_values)]])  # stall=1, limit=1
+                new_Q.append(new_round)
+            self.Q = new_Q
+            self.N = self._blank_table(0)  # no visit counts were ever recorded for v6
+
         else:
             if meta.get("actions") != ACTIONS:
                 raise ValueError(
@@ -174,6 +218,38 @@ class QLearningAgent:
             self.use_stall_feature = use_stall
             self.stall_buckets_eff = meta["stall_buckets"] if use_stall else 1
             self.round_cost = meta.get("round_cost", 0.0)
-            self.Q = data["Q"]
+
+            if "limit_buckets" in meta:
+                # v8+: already 5-D, nothing to wrap
+                use_limit = bool(meta.get("use_limit_feature", False))
+                if use_limit and meta.get("limit_buckets") != LIMIT_BUCKETS:
+                    raise ValueError(
+                        f"model '{path}' was trained with limit_buckets={meta.get('limit_buckets')}, "
+                        f"but the current code uses LIMIT_BUCKETS={LIMIT_BUCKETS} — refusing to load."
+                    )
+                self.use_limit_feature = use_limit
+                self.limit_buckets_eff = meta["limit_buckets"] if use_limit else 1
+                self.timeout_penalty = meta.get("timeout_penalty", 0.0)
+                self.Q = data["Q"]
+                self.N = data.get("N") or self._blank_table(0)
+            else:
+                # v7: 4-D ([round][gap][stall][action]), no limit dimension
+                # and no visit counts. Wrap into 5-D with a single limit
+                # bucket.
+                self.use_limit_feature = False
+                self.limit_buckets_eff = 1
+                self.timeout_penalty = 0.0
+                raw_Q = data["Q"]
+                new_Q = []
+                for round_row in raw_Q:
+                    new_round = []
+                    for gap_row in round_row:
+                        new_gap = []
+                        for action_values in gap_row:
+                            new_gap.append([list(action_values)])  # limit=1
+                        new_round.append(new_gap)
+                    new_Q.append(new_round)
+                self.Q = new_Q
+                self.N = self._blank_table(0)  # v7 never recorded visit counts
 
         self.epsilon = data.get("epsilon", self.epsilon_min)

@@ -41,6 +41,27 @@ class NegotiationState:
                 break
         return count
 
+    @property
+    def limit_rounds(self) -> int:
+        """How many of the most recent consecutive rounds (including now)
+        Parley's offer has been at its maximum — buyer_offer >= buyer_max -
+        deal_tolerance. Computed from `history`'s recorded offers, same
+        backward-scan pattern as stall_rounds; the seeded round-0 "opening"
+        entry (offer = buyer_max * 0.35) is always far below the limit, so
+        it naturally stops the scan without special-casing it."""
+        if not self.history:
+            return 0
+        tol = deal_tolerance(self.buyer_max)
+        at_limit = self.buyer_max - tol
+        count = 0
+        for i in range(len(self.history) - 1, -1, -1):
+            offer_at_i = self.history[i][1]
+            if offer_at_i >= at_limit:
+                count += 1
+            else:
+                break
+        return count
+
 
 import random
 
