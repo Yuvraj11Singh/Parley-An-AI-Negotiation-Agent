@@ -21,7 +21,10 @@ const NEGOTIATION_SCHEMA_VERSION = 2;
 // --- round-level state derivation (business-level only) --------------------
 // Unchanged behavior from the existing Deal Desk — relocated here so it's
 // computed in exactly one place as more parts of the app come to need it.
-function deriveRoundState(roundNumber, prevOffer, newOffer, outcome, done){
+// `atLimit` is a boolean only (never buyer_max itself) telling us this
+// round's offer sat at Parley's hidden maximum and didn't change — distinct
+// from HOLDING FIRM, which is "chose not to move while still below max".
+function deriveRoundState(roundNumber, prevOffer, newOffer, outcome, done, atLimit){
   if (done){
     if (outcome === 'deal') return { cls: 'deal', label: 'DEAL' };
     if (outcome === 'walk') return { cls: 'walk', label: 'WALK-AWAY' };
@@ -29,13 +32,14 @@ function deriveRoundState(roundNumber, prevOffer, newOffer, outcome, done){
   }
   if (roundNumber <= 1) return { cls: 'counter', label: 'COUNTER' };
   if (prevOffer !== null && newOffer > prevOffer + 0.05) return { cls: 'concession', label: 'CONCESSION' };
+  if (atLimit) return { cls: 'limit', label: 'AT LIMIT' };
   return { cls: 'ask', label: 'HOLDING FIRM' };
 }
 
 // --- per-round telemetry (Section 4.4) --------------------------------------
 // Everything Section 4.4 asks for, computed once per round.
-function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done }){
-  const state = deriveRoundState(roundNumber, prevOffer, agentOffer, outcome, done);
+function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }){
+  const state = deriveRoundState(roundNumber, prevOffer, agentOffer, outcome, done, atLimit);
   return {
     roundNumber,
     sellerAsk,
@@ -47,6 +51,10 @@ function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, ac
     stateClass: state.cls,
     timestamp: new Date().toISOString(),
     outcome: done ? outcome : null,
+    atLimit: !!atLimit,
+    // "agent" | "safeguard" | null — null (including for records recorded
+    // before this field existed) is read as an agent walk, never a guess
+    walkReason: (outcome === 'walk' && done) ? (walkReason || 'agent') : null,
   };
 }
 
@@ -94,17 +102,20 @@ function createNegotiationRecord({ category, itemId, itemName, referencePrice, q
   };
 }
 
-function pushNegotiationRound(record, { roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done }){
+function pushNegotiationRound(record, { roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }){
   // v1 shape, exactly as before
   record.rounds.push({ round: roundNumber, ask: sellerAsk, offer: agentOffer, at: new Date().toISOString() });
   // v2 telemetry, additive
-  record.telemetry.push(buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done }));
+  record.telemetry.push(buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, action, outcome, done, atLimit, walkReason }));
 }
 
-function finalizeNegotiationRecord(record, outcome, dealPrice, buyerMax){
+function finalizeNegotiationRecord(record, outcome, dealPrice, buyerMax, walkReason){
   record.outcome = outcome;
   record.dealPrice = dealPrice || null;
   record.buyerMax = buyerMax || null;
+  // "agent" | "safeguard" | null — null is only possible for outcomes other
+  // than 'walk'; a missing value on an old record is read as an agent walk
+  record.walkReason = outcome === 'walk' ? (walkReason || 'agent') : null;
 
   record.finalPrice = outcome === 'deal' ? (dealPrice || null) : null;
   record.valueCaptured = (outcome === 'deal' && dealPrice != null && buyerMax != null)
@@ -139,11 +150,16 @@ function normalizeNegotiationRecord(raw){
       action: null,
       outcome: raw.outcome,
       done: isLast,
+      // pre-safeguard records never captured either field — false/agent are
+      // the honest "not recorded" defaults, not guesses
+      atLimit: r.atLimit ?? false,
+      walkReason: isLast ? (raw.walkReason || 'agent') : null,
     });
   });
   return {
     ...raw,
     schemaVersion: NEGOTIATION_SCHEMA_VERSION,
+    walkReason: raw.outcome === 'walk' ? (raw.walkReason || 'agent') : null,
     createdAt: raw.createdAt || raw.startedAt || raw.timestamp || null,
     quantity: raw.quantity ?? null,
     targetPrice: raw.targetPrice ?? (raw.referencePrice ?? null),
@@ -224,5 +240,7 @@ function derivePhase(round, maxRounds, gapNow, openingGap){
   const gapFrac = openingGap > 0 ? Math.max(0, gapNow) / openingGap : 0;
   if (gapFrac <= 0.05 || roundFrac >= 0.85) return 'CLOSING';
   if (gapFrac <= 0.35) return 'CONVERGENCE';
-  return 'EXPLORATION';
+  // the served policy is frozen and greedy and never explores during play —
+  // "EARLY ROUNDS" describes what's actually happening, "EXPLORATION" doesn't
+  return 'EARLY ROUNDS';
 }

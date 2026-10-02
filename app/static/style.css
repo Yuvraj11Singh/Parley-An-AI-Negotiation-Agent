@@ -15,6 +15,8 @@
   --walk-soft: #fbeced;
   --timeout: #d9a441;
   --timeout-soft: #fbf3e3;
+  --limit: #c97a3e;
+  --limit-soft: #fbece0;
   --mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
   --heading: 'Outfit', -apple-system, sans-serif;
   --sans: 'Inter', -apple-system, sans-serif;
@@ -491,6 +493,7 @@ body:has(.landing){
 .hero-stage-tag.deal{ background:var(--deal); }
 .hero-stage-tag.walk{ background:var(--walk); }
 .hero-stage-tag.timeout{ background:var(--timeout); color:#3a2a05; }
+.hero-stage-tag.limit{ background:var(--limit); }
 
 .offer-movement{ font-family:var(--mono); font-size:10px; color:var(--deal); margin-top:2px; }
 
@@ -648,6 +651,7 @@ body:has(.landing){
 }
 .audit-badge.deal{ background:var(--deal-soft); color:var(--deal); }
 .audit-badge.walk{ background:var(--walk-soft); color:var(--walk); }
+.audit-badge.walk-safeguard{ background:var(--limit-soft); color:var(--limit); }
 .audit-badge.timeout{ background:var(--timeout-soft); color:var(--timeout); }
 
 .audit-layout{
@@ -692,6 +696,7 @@ body:has(.landing){
 .chat-sys-time{ font-family:var(--mono); font-size:11px; margin-right:8px; }
 .chat-sys.deal{ background:var(--deal-soft); color:var(--deal); }
 .chat-sys.walk{ background:var(--walk-soft); color:var(--walk); }
+.chat-sys.walk-safeguard{ background:var(--limit-soft); color:var(--limit); }
 .chat-sys.timeout{ background:var(--timeout-soft); color:var(--timeout); }
 .chat-sys b{ font-family:var(--mono); }
 

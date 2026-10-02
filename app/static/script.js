@@ -248,21 +248,31 @@ function renderOutcome(data, lastAsk){
       ${termsLine ? `<div class="outcome-explain">${termsLine} — carried with this deal, not negotiated by price.</div>` : ''}
     `;
   } else if (cls === 'walk'){
-    // honest, derived reason: how long the seller's ask had actually moved
-    // before Parley stopped — not a fabricated narrative
-    const stalledRounds = computeSellerStallRounds(negotiationRecord.rounds);
-    const reasonLine = stalledRounds >= 2
-      ? `The seller's ask hadn't moved for the last ${stalledRounds} rounds before Parley stopped.`
-      : `Parley's hidden maximum for this negotiation couldn't reach the seller's ask.`;
+    const isSafeguard = data.walk_reason === 'safeguard';
+    let headline, reasonLine;
+    if (isSafeguard){
+      // a clearly labelled system rule, not a learned behaviour — must read
+      // that way, not like the agent made a judgment call
+      headline = 'Walk-away safeguard';
+      reasonLine = `Parley reached its maximum and the seller did not move for ${data.safeguard_hold_rounds} rounds, so no deal was possible.`;
+    } else {
+      // honest, derived reason: how long the seller's ask had actually moved
+      // before Parley stopped — not a fabricated narrative
+      headline = 'Parley walked away from this negotiation';
+      const stalledRounds = computeSellerStallRounds(negotiationRecord.rounds);
+      reasonLine = stalledRounds >= 2
+        ? `The seller's ask hadn't moved for the last ${stalledRounds} rounds before Parley stopped.`
+        : `Parley's hidden maximum for this negotiation couldn't reach the seller's ask.`;
+    }
     div.innerHTML = `
-      <div class="outcome-headline">Parley walked away from this negotiation</div>
+      <div class="outcome-headline">${headline}</div>
       <div class="outcome-grid outcome-grid-2">
         <div><span>Seller's final ask</span><b>${lastAsk.toFixed(1)}</b></div>
         <div><span>Parley's hidden max</span><b>${data.buyer_max.toFixed(1)}</b></div>
         <div><span>Round</span><b>${roundCount} / ${maxRounds}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
-      <div class="outcome-explain">${reasonLine} Parley has its own hidden maximum price for this negotiation — generated at random each time you start one. No deal was possible within that limit, so it stopped negotiating.</div>
+      <div class="outcome-explain">${reasonLine}${isSafeguard ? '' : ' Parley has its own hidden maximum price for this negotiation — generated at random each time you start one. No deal was possible within that limit, so it stopped negotiating.'}</div>
     `;
   } else {
     div.innerHTML = `
@@ -516,7 +526,7 @@ async function sendOffer(){
 
   askInput.value = '';
 
-  const stage = deriveRoundState(data.round, prevOffer, data.buyer_offer, data.outcome, data.done);
+  const stage = deriveRoundState(data.round, prevOffer, data.buyer_offer, data.outcome, data.done, data.at_limit);
   await addRoundRow(data.round, val, data.buyer_offer, prevOffer, stage, data.done, data.outcome);
   pushNegotiationRound(negotiationRecord, {
     roundNumber: data.round,
@@ -526,6 +536,8 @@ async function sendOffer(){
     action: data.action,
     outcome: data.outcome,
     done: data.done,
+    atLimit: data.at_limit,
+    walkReason: data.walk_reason,
   });
 
   if (data.done){
@@ -535,7 +547,7 @@ async function sendOffer(){
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, true, data.outcome);
     await sleep(250);
     renderOutcome(data, val);
-    finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max);
+    finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max, data.walk_reason);
     saveNegotiationRecord(negotiationRecord);
   } else {
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, false, null);

@@ -65,8 +65,9 @@ function loadAuditTrail(filterText = ''){
 
 function renderAuditListItem(r){
   const time = new Date(r.timestamp).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-  const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice?.toFixed(1)}` : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
-  const badgeClass = r.outcome === 'deal' ? 'deal' : r.outcome === 'walk' ? 'walk' : 'timeout';
+  const isSafeguardWalk = r.outcome === 'walk' && r.walkReason === 'safeguard';
+  const outcomeLabel = r.outcome === 'deal' ? `Deal @ ${r.dealPrice?.toFixed(1)}` : isSafeguardWalk ? 'Safeguard walk-away' : r.outcome === 'walk' ? 'Buyer walked' : 'Timed out';
+  const badgeClass = r.outcome === 'deal' ? 'deal' : isSafeguardWalk ? 'walk-safeguard' : r.outcome === 'walk' ? 'walk' : 'timeout';
   const selected = r.id === selectedAuditId ? 'selected' : '';
   return `
     <div class="audit-item ${selected}" data-id="${r.id}">
@@ -104,6 +105,7 @@ function renderAuditDetail(r){
 
   let outcomeText, cls;
   if (r.outcome === 'deal'){ cls='deal'; outcomeText = `Deal closed at <b>${r.dealPrice?.toFixed(1)}</b> — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
+  else if (r.outcome === 'walk' && r.walkReason === 'safeguard'){ cls='walk-safeguard'; outcomeText = `Walk-away safeguard fired — Parley's offer was pinned at its hidden max (<b>${r.buyerMax?.toFixed(1)}</b>) and the seller hadn't moved`; }
   else if (r.outcome === 'walk'){ cls='walk'; outcomeText = `Buyer walked away — hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
   else { cls='timeout'; outcomeText = `Timed out after ${r.rounds.length} rounds — buyer's hidden max was <b>${r.buyerMax?.toFixed(1)}</b>`; }
   html += `<div class="chat-sys ${cls}"><span class="chat-sys-time">${fmtTime(r.timestamp)}</span> ${outcomeText}</div>`;

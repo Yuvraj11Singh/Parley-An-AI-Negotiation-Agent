@@ -15,6 +15,7 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.agent import QLearningAgent
 from src.environment import MAX_ROUNDS, NegotiationState, deal_tolerance
+from src.safeguard import SAFEGUARD_HOLD_ROUNDS, should_walk_away
 
 app = Flask(__name__, static_folder="static")
 
@@ -81,7 +82,7 @@ ITEMS = {
 DEFAULT_ITEM = "laptops_20"
 
 
-def _serialize(state: NegotiationState, revealed: bool = False, action=None):
+def _serialize(state: NegotiationState, revealed: bool = False, action=None, walk_reason=None):
     return {
         "round": state.round,
         "buyer_offer": round(state.buyer_offer, 1),
@@ -94,6 +95,13 @@ def _serialize(state: NegotiationState, revealed: bool = False, action=None):
         # concession fraction) — exposed read-only for frontend telemetry,
         # doesn't change how the decision itself is made
         "action": action,
+        # "agent" = the trained policy itself chose WALK; "safeguard" = the
+        # rule-based walk-away safeguard overrode it; None otherwise
+        "walk_reason": walk_reason,
+        # a boolean only — never buyer_max itself — so the round timeline can
+        # label a round AT LIMIT without revealing the hidden maximum early
+        "at_limit": state.buyer_offer >= state.buyer_max - deal_tolerance(state.buyer_max),
+        "safeguard_hold_rounds": SAFEGUARD_HOLD_ROUNDS,
     }
 
 
@@ -225,6 +233,10 @@ def new_negotiation():
         buyer_offer=buyer_offer,
         seller_ask=buyer_offer,  # placeholder until the human sends a real ask
     )
+    # seed round 0 the same way environment.py's reset() does, so
+    # state.limit_rounds / state.stall_rounds (and therefore the safeguard)
+    # have real history to scan from round 1 onward
+    state.history.append((0, buyer_offer, buyer_offer, "opening"))
     item_payload = {
         "id": item_id,
         "name": item_name,
@@ -261,21 +273,32 @@ def submit_offer():
 
     state.round += 1
     state.seller_ask = seller_ask
+    # record this round before deciding — limit_rounds/stall_rounds (and so
+    # should_walk_away) read this history, same as environment.py
+    state.history.append((state.round, state.buyer_offer, state.seller_ask, "—"))
 
-    action = agent.act(state, greedy=True)
+    if should_walk_away(state):
+        action = "WALK"
+        walk_reason = "safeguard"
+    else:
+        action = agent.act(state, greedy=True)
+        walk_reason = "agent" if action == "WALK" else None
 
     if action == "WALK":
         state.done = True
         state.outcome = "walk"
-        return jsonify(_serialize(state, revealed=True, action=action))
+        state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, "buyer walked away")
+        return jsonify(_serialize(state, revealed=True, action=action, walk_reason=walk_reason))
 
     concession = float(action)
     state.buyer_offer = min(state.buyer_max, state.buyer_offer + concession * state.gap)
+    state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, state.history[-1][3])
 
     if state.buyer_offer >= state.seller_ask - deal_tolerance(state.buyer_max):
         state.done = True
         state.outcome = "deal"
         state.deal_price = state.seller_ask
+        state.history[-1] = (state.round, state.buyer_offer, state.seller_ask, f"deal closed @ {state.deal_price:.1f}")
         return jsonify(_serialize(state, revealed=True, action=action))
 
     if state.round >= MAX_ROUNDS:
