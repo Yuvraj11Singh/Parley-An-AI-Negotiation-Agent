@@ -78,7 +78,7 @@ function buildRoundTelemetry({ roundNumber, sellerAsk, agentOffer, prevOffer, ac
 
 // --- canonical negotiation record (Section 12) ------------------------------
 
-function createNegotiationRecord({ category, itemId, itemName, referencePrice, quantity, requirements, preferences, sellerMin }){
+function createNegotiationRecord({ category, itemId, itemName, referencePrice, quantity, requirements, preferences, sellerMin, maxRounds }){
   const now = new Date().toISOString();
   const reqList = (requirements && requirements.length) ? requirements : null;
   const prefList = (preferences && preferences.length) ? preferences : null;
@@ -113,6 +113,12 @@ function createNegotiationRecord({ category, itemId, itemName, referencePrice, q
     priorities: null,       // no priority-ranking UI yet — left honestly null, not guessed
     seller: null,           // no seller-identity concept exists yet
     concessionInventory: buildConcessionInventory({ quantity, constraints: reqList }),
+    dealTerms: buildDealTerms({ category, quantity, requirements: reqList, preferences: prefList }),
+    // the round budget this negotiation ran under — needed to compute the
+    // phase timeline consistently later (how close a round is to the round
+    // limit). Old records never recorded it; normalizeNegotiationRecord
+    // falls back to the backend's MAX_ROUNDS (15), which has never changed.
+    maxRounds: maxRounds ?? 15,
     telemetry: [],
     finalPrice: null,
     valueCaptured: null,
@@ -203,6 +209,11 @@ function normalizeNegotiationRecord(raw){
       quantity: raw.quantity ?? null,
       constraints: raw.constraints ?? raw.requirements ?? null,
     }),
+    dealTerms: raw.dealTerms ?? buildDealTerms({
+      category: raw.category, quantity: raw.quantity ?? null,
+      requirements: raw.requirements ?? null, preferences: raw.preferences ?? null,
+    }),
+    maxRounds: raw.maxRounds ?? 15,
     telemetry,
     finalPrice: raw.finalPrice ?? (raw.outcome === 'deal' ? (raw.dealPrice ?? null) : null),
     valueCaptured: raw.valueCaptured ?? ((raw.outcome === 'deal' && raw.dealPrice != null && raw.buyerMax != null)
@@ -251,6 +262,33 @@ function buildConcessionInventory({ quantity, constraints }){
     protected: protectedTerms,
     potentialTrades: [], // foundation for "I can improve X if I receive Y" — none representable yet
   };
+}
+
+// --- multi-issue negotiation foundation --------------------------------
+// A structured representation of every term a real deal can carry — price,
+// quantity, and whatever category-relevant specs the item brought with it
+// (delivery, warranty, install, SLA, contract term, etc., arriving via
+// `requirements`/`preferences`, however the category happened to phrase
+// them). This is DATA MODEL ONLY: today's Q-learning agent negotiates price
+// alone, and every non-price term here is marked `negotiable: false` for
+// exactly that reason — it is not pretending the agent trades on them. The
+// purpose is so a future multi-issue engine has a structure to populate
+// without another data-model migration; nothing here changes how the
+// current negotiation runs.
+function buildDealTerms({ category, quantity, requirements, preferences }){
+  const terms = [
+    { key: 'price', label: 'Price', negotiable: true, value: null },
+  ];
+  if (quantity){
+    terms.push({ key: 'quantity', label: 'Quantity', negotiable: false, value: quantity });
+  }
+  (requirements || []).forEach((r, i) => {
+    terms.push({ key: `requirement_${i}`, label: r, negotiable: false, value: r, kind: 'requirement' });
+  });
+  (preferences || []).forEach((p, i) => {
+    terms.push({ key: `preference_${i}`, label: p, negotiable: false, value: p, kind: 'preference' });
+  });
+  return { category: category ?? null, terms };
 }
 
 // --- deal intelligence: negotiation position & phase (Phase 3.1, 3.4) ------

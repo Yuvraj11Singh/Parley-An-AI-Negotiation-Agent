@@ -148,6 +148,56 @@ body:has(.landing-nav){ padding-top:0; height:auto; min-height:100vh; }
 .outcome-explain{ font-size:12px; color:var(--ink-dim); font-weight:500; margin-top:10px; line-height:1.5; }
 @media (max-width:600px){ .outcome-grid{ grid-template-columns:repeat(2,1fr); } }
 
+/* Negotiation Autopsy — the structured post-negotiation summary that
+   follows the outcome card. Deliberately plainer than the outcome card
+   (no colored headline) since it's analysis, not a verdict. */
+.autopsy-card{
+  align-self:stretch; width:100%; max-width:100%;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px; margin-top:-2px;
+}
+.autopsy-header{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-dim);
+  font-weight:700; margin-bottom:12px;
+}
+.autopsy-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:4px; }
+.autopsy-grid > div{ display:flex; flex-direction:column; gap:3px; }
+.autopsy-grid span{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:var(--ink-dim); font-weight:600; }
+.autopsy-grid b{ font-family:var(--mono); font-size:13px; color:var(--ink); font-weight:600; }
+@media (max-width:600px){ .autopsy-grid{ grid-template-columns:repeat(2,1fr); } }
+
+.autopsy-moments{ margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+.autopsy-moments-label{ font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-dim); font-weight:600; margin-bottom:8px; }
+.autopsy-moments ul{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
+.autopsy-moments li{ font-size:12px; color:var(--ink); line-height:1.5; }
+.autopsy-moments li b{ font-family:var(--mono); color:var(--accent); font-weight:600; }
+
+/* Audit Trail detail: autopsy/trajectory/seller-behavior/replay cards sit
+   in a vertical stack above the detail panel's existing chat styling */
+.autopsy-card, .trajectory-card, .seller-behavior-card, .replay-card{
+  margin-bottom:16px;
+}
+.trajectory-card{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+}
+.trajectory-chart-wrap{ height:220px; position:relative; }
+.seller-behavior-card{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+}
+
+.replay-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+}
+.replay-header{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+.replay-controls{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.replay-controls button{ padding:7px 12px; font-size:12px; }
+.replay-counter{ font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); margin-left:6px; }
+.replay-card .chat-thread-detail{ max-height:460px; overflow-y:auto; padding-right:2px; }
+@media (max-width:600px){
+  .replay-header{ flex-direction:column; align-items:flex-start; }
+  .replay-controls{ width:100%; }
+}
+
 .round-row{
   display:flex; align-items:flex-start; gap:14px;
   padding:14px 16px; border-radius:10px; position:relative;
@@ -690,6 +740,20 @@ body:has(.landing){
 
 .dash-view h2{ font-family:var(--heading); font-weight:600; font-size:22px; margin:0 0 6px; color:var(--ink); }
 .dash-view .explain{ margin-bottom:20px; }
+.insights-subhead{ font-family:var(--heading); font-weight:600; font-size:16px; margin:0 0 6px; color:var(--ink); }
+
+/* Policy/model information (Section 11) — compact, collapsed by default so
+   it doesn't compete with the business-oriented content around it */
+.tech-details{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+  padding:10px 16px; margin-bottom:18px; font-size:12.5px;
+}
+.tech-details summary{ cursor:pointer; font-weight:600; color:var(--ink-dim); padding:4px 0; }
+.tech-details summary:hover{ color:var(--ink); }
+.tech-details-body{ padding-top:10px; display:flex; flex-direction:column; gap:6px; }
+.tech-details-row{ display:flex; justify-content:space-between; gap:12px; }
+.tech-details-row span{ color:var(--ink-dim); }
+.tech-details-row b{ font-family:var(--mono); font-weight:600; color:var(--ink); text-align:right; }
 
 .perf-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
 @media (max-width:600px){ .perf-grid{ grid-template-columns:1fr; } }
@@ -789,6 +853,9 @@ body:has(.landing){
 .perf-grid{ grid-template-columns:repeat(5,1fr); }
 @media (max-width:1100px){ .perf-grid{ grid-template-columns:repeat(2,1fr); } }
 @media (max-width:600px){ .perf-grid{ grid-template-columns:1fr; } }
+.behavior-grid{ grid-template-columns:repeat(3,1fr); }
+@media (max-width:900px){ .behavior-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:600px){ .behavior-grid{ grid-template-columns:1fr; } }
 .category-grid{ max-width:none; margin:0; }
 .audit-layout{ grid-template-columns: 320px 1fr; }
 
@@ -836,9 +903,17 @@ body:has(.landing){
 
 .home-top-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
 .home-mini-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }
+.home-intel-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
 .home-bottom-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-@media (max-width:1100px){ .home-mini-row{ grid-template-columns:repeat(2,1fr); } }
-@media (max-width:800px){ .home-top-row, .home-bottom-row, .home-mini-row{ grid-template-columns:1fr; } }
+@media (max-width:1100px){ .home-mini-row, .home-intel-row{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:800px){ .home-top-row, .home-bottom-row, .home-mini-row, .home-intel-row{ grid-template-columns:1fr; } }
+
+.home-intel-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px;
+  box-shadow: 0 1px 2px rgba(45,49,66,0.03), 0 6px 16px rgba(45,49,66,0.03);
+}
+.home-intel-label{ font-size:11px; color:var(--ink-dim); font-weight:600; margin-bottom:8px; }
+.home-intel-val{ font-family:var(--mono); font-size:19px; font-weight:700; color:var(--ink); }
 
 .home-card, .home-mini, .home-panel{
   background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px;

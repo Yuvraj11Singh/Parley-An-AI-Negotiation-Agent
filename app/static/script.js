@@ -268,16 +268,31 @@ function renderOutcome(data, lastAsk){
 
   if (cls === 'deal'){
     const savings = Math.max(0, data.buyer_max - data.deal_price);
+    const target = negotiationRecord.targetPrice;
+    // Section 12: final > target is not a failure, and final < target is
+    // extra value beyond what was expected — say so plainly rather than
+    // leaving the user to infer it from a bare number comparison
+    let targetLine = '';
+    if (target != null){
+      const vsTarget = data.deal_price - target;
+      targetLine = Math.abs(vsTarget) < 0.01
+        ? `<div class="outcome-explain">This closed right at your target price of ${fmtPrice(target)}.</div>`
+        : vsTarget > 0
+          ? `<div class="outcome-explain">This closed ${fmtPrice(vsTarget)} above your target of ${fmtPrice(target)}, but still ${fmtPrice(savings)} below Parley's reservation price — real value was still captured.</div>`
+          : `<div class="outcome-explain">This closed ${fmtPrice(-vsTarget)} below your target of ${fmtPrice(target)} — extra value beyond what you expected.</div>`;
+    }
     div.innerHTML = `
       <div class="outcome-headline">✓ Deal closed at <b>${fmtPrice(data.deal_price)}</b></div>
       <div class="outcome-grid">
         <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
         <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
-        <div><span>Parley's hidden max</span><b>${fmtPrice(data.buyer_max)}</b></div>
+        <div><span>Target price</span><b>${fmtPrice(target)}</b></div>
+        <div><span>Parley's reservation price</span><b>${fmtPrice(data.buyer_max)}</b></div>
         <div><span>Value captured</span><b class="outcome-savings">${fmtPrice(savings)}</b></div>
         <div><span>Rounds</span><b>${roundCount}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
+      ${targetLine}
       ${termsLine ? `<div class="outcome-explain">${termsLine} — carried with this deal, not negotiated by price.</div>` : ''}
     `;
   } else if (cls === 'walk'){
@@ -304,23 +319,28 @@ function renderOutcome(data, lastAsk){
         ? `The seller's ask hadn't moved for the last ${stalledRounds} rounds before Parley stopped.`
         : `Parley didn't see a workable agreement from here.`;
     }
+    const finalGap = Math.max(0, lastAsk - data.buyer_offer);
     div.innerHTML = `
       <div class="outcome-headline">${headline}</div>
       <div class="outcome-grid outcome-grid-2">
         <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
-        <div><span>Parley's hidden max</span><b>${fmtPrice(data.buyer_max)}</b></div>
+        <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
+        <div><span>Final gap</span><b>${fmtPrice(finalGap)}</b></div>
+        <div><span>Parley's reservation price</span><b>${fmtPrice(data.buyer_max)}</b></div>
         <div><span>Round</span><b>${roundCount} / ${maxRounds}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
       <div class="outcome-explain">${reasonLine}</div>
     `;
   } else {
+    const finalGap = Math.max(0, lastAsk - data.buyer_offer);
     div.innerHTML = `
       <div class="outcome-headline">Negotiation timed out after ${maxRounds} rounds</div>
       <div class="outcome-grid outcome-grid-2">
-        <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
-        <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
-        <div><span>Rounds</span><b>${roundCount}</b></div>
+        <div><span>Last seller ask</span><b>${fmtPrice(lastAsk)}</b></div>
+        <div><span>Last Parley offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
+        <div><span>Final gap</span><b>${fmtPrice(finalGap)}</b></div>
+        <div><span>Rounds completed</span><b>${roundCount}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
       <div class="outcome-explain">No agreement was reached within the round limit.</div>
@@ -328,7 +348,22 @@ function renderOutcome(data, lastAsk){
   }
 
   chatThread.appendChild(div);
+  renderAutopsy(negotiationRecord);
   scrollThreadToBottom();
+}
+
+// --- Negotiation Autopsy (Section 6): a structured, data-only summary that
+// appears right after the outcome card, built entirely from
+// negotiation-intelligence.js's pure functions over the now-finalized
+// record — the same functions the Audit Trail / Replay use later, so this
+// screen and that one can never disagree about what happened. -------------
+function renderAutopsy(record){
+  const autopsy = computeAutopsy(record);
+  if (!autopsy) return;
+  const div = document.createElement('div');
+  div.className = `autopsy-wrap${prefersReducedMotion ? '' : ' outcome-enter'}`;
+  div.innerHTML = buildAutopsyHtml(autopsy);
+  chatThread.appendChild(div);
 }
 
 // Observed-data-only reason for a walk-away: how many of the most recent
@@ -560,6 +595,7 @@ async function startNegotiation(){
     requirements: data.item.details,
     preferences,
     sellerMin,
+    maxRounds,
   });
 
   deskSub.textContent = `Negotiating: ${data.item.name} · ${data.category}`;
@@ -657,8 +693,10 @@ async function sendOffer(){
     setStep('outcome');
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, true, data.outcome);
     await sleep(250);
-    renderOutcome(data, val);
+    // finalize before rendering — the outcome autopsy reads buyerMax/dealPrice/
+    // valueCaptured off negotiationRecord, which only this call populates
     finalizeNegotiationRecord(negotiationRecord, data.outcome, data.deal_price, data.buyer_max, data.walk_reason, data.safeguard_hold_rounds);
+    renderOutcome(data, val);
     saveNegotiationRecord(negotiationRecord);
   } else {
     updateProposalValues(data.round, val, data.buyer_offer, stage.label, stage.cls, false, null);

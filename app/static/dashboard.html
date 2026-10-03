@@ -84,6 +84,37 @@
         </div>
       </div>
 
+      <div class="home-intel-row" id="homeIntelRow" style="display:none;">
+        <div class="home-intel-card">
+          <div class="home-intel-label">Avg seller concession</div>
+          <div class="home-intel-val" id="hiSellerConcession">—</div>
+        </div>
+        <div class="home-intel-card">
+          <div class="home-intel-label">Avg Parley concession</div>
+          <div class="home-intel-val" id="hiParleyConcession">—</div>
+        </div>
+        <div class="home-intel-card">
+          <div class="home-intel-label">Avg closing gap</div>
+          <div class="home-intel-val" id="hiClosingGap">—</div>
+        </div>
+        <div class="home-intel-card">
+          <div class="home-intel-label">Walk / Timeout rate</div>
+          <div class="home-intel-val" id="hiWalkTimeout">—</div>
+        </div>
+      </div>
+
+      <div class="dash-section" id="gapByRoundSection" style="display:none;">
+        <div class="dash-section-head">
+          <div>
+            <h3>Average Gap by Round</h3>
+            <p class="explain">How far apart seller and Parley typically are at each round, averaged across every negotiation that reached it.</p>
+          </div>
+        </div>
+        <div class="chart-card">
+          <canvas id="gapByRoundChart" height="90"></canvas>
+        </div>
+      </div>
+
       <div class="home-bottom-row">
         <div class="home-panel">
           <div class="home-panel-head"><span>Recent negotiations</span><button class="link-btn" id="allNegotiationsBtn">All negotiations →</button></div>
@@ -98,7 +129,18 @@
 
     <section id="view-insights" class="dash-view" style="display:none;">
       <h2>Agent Insights</h2>
-      <p class="explain">Held-out evaluation of the served v6 agent + walk-away safeguard (held-out seed 600, 3,000 episodes per condition). Spread shows variation across the three independent training seeds behind v6, evaluated the same way. Reproduce with <code>python -m scripts.published_eval</code>.</p>
+
+      <details class="tech-details">
+        <summary>Technical details</summary>
+        <div class="tech-details-body">
+          <div class="tech-details-row"><span>Agent policy</span><b>Frozen evaluation policy — never explores or updates during play</b></div>
+          <div class="tech-details-row"><span>Model</span><b>Tabular Q-learning</b></div>
+          <div class="tech-details-row"><span>Currently served version</span><b>V6 + walk-away safeguard</b></div>
+        </div>
+      </details>
+
+      <h3 class="insights-subhead">Held-Out Evaluation</h3>
+      <p class="explain">Offline evaluation of the served v6 agent + walk-away safeguard, run against scripted opponents (held-out seed 600, 3,000 episodes per condition) — not from your own negotiations. Spread shows variation across the three independent training seeds behind v6, evaluated the same way. Reproduce with <code>python -m scripts.published_eval</code>.</p>
       <div class="perf-grid">
         <div class="perf-card">
           <div class="perf-label">vs. Slow seller</div>
@@ -152,6 +194,42 @@
         </div>
         <div class="chart-card">
           <canvas id="learningCurve" height="110"></canvas>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <h3 class="insights-subhead">Your Negotiation Behavior</h3>
+        <p class="explain">Computed from the negotiations run in this browser — a live, ongoing picture of how the agent has actually behaved for you, distinct from the scripted held-out evaluation above.</p>
+        <div id="behaviorEmpty" class="recent-empty" style="display:none;">Not enough negotiations yet to show behavior patterns — run a few more.</div>
+        <div id="behaviorContent" style="display:none;">
+          <div class="perf-grid behavior-grid">
+            <div class="perf-card">
+              <div class="perf-label">Deal / walk / timeout rate</div>
+              <div class="perf-val" id="bvOutcomeRates" style="font-size:19px;">—</div>
+            </div>
+            <div class="perf-card">
+              <div class="perf-label">Avg rounds to close</div>
+              <div class="perf-val" id="bvAvgRounds" style="font-size:19px;">—</div>
+            </div>
+            <div class="perf-card">
+              <div class="perf-label">Avg savings per deal</div>
+              <div class="perf-val" id="bvAvgSavings" style="font-size:19px;">—</div>
+            </div>
+            <div class="perf-card">
+              <div class="perf-label">Holding-firm frequency</div>
+              <div class="perf-val" id="bvHoldFreq" style="font-size:19px;">—</div>
+              <div class="perf-sub" id="bvConcessionFreq"></div>
+            </div>
+            <div class="perf-card">
+              <div class="perf-label">Avg rounds before first concession</div>
+              <div class="perf-val" id="bvRoundsToFirstConcession" style="font-size:19px;">—</div>
+            </div>
+            <div class="perf-card">
+              <div class="perf-label">Avg opening offer distance</div>
+              <div class="perf-val" id="bvOpeningDistance" style="font-size:19px;">—</div>
+              <div class="perf-sub">of the opening gap, as a fraction</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -226,6 +304,7 @@
 </div>
 
 <script src="/static/negotiation-model.js"></script>
+<script src="/static/negotiation-intelligence.js"></script>
 <script src="/static/categories.js"></script>
 <script src="/static/dashboard.js"></script>
 </body>
