@@ -15,9 +15,9 @@
       <div class="app-brand-sub">AI negotiation agent</div>
     </div>
     <nav class="app-nav">
-      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📊</span> Dashboard</a>
-      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">🗂️</span> Categories</a>
-      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📜</span> Audit Trail</a>
+      <a class="dash-nav-item" href="/dashboard"><span class="dash-nav-icon">📊</span><span>Dashboard</span></a>
+      <a class="dash-nav-item" href="/categories"><span class="dash-nav-icon">🗂️</span><span>Categories</span></a>
+      <a class="dash-nav-item" href="/dashboard#audit"><span class="dash-nav-icon">📜</span><span>Audit Trail</span></a>
     </nav>
     <div class="app-sidebar-foot">
       <div class="tag">LIVE AGENT · Q-LEARNING</div>
@@ -26,8 +26,12 @@
 
   <main class="app-content">
     <div class="desk-header">
-      <h1>Deal Desk</h1>
-      <div class="sub" id="deskSub">Report what the seller quotes each round — Parley negotiates the purchase on your behalf.</div>
+      <div>
+        <div class="eyebrow">WORKSPACE / ACTIVE DEAL</div>
+        <h1>Deal Desk</h1>
+        <div class="sub" id="deskSub">Report what the seller quotes each round — Parley negotiates the purchase on your behalf.</div>
+      </div>
+      <div class="desk-live-status"><span></span> LIVE AGENT <b>V6</b></div>
     </div>
     <div class="desk-body">
       <aside class="stepper">
@@ -62,7 +66,10 @@
         </div>
         <div id="chatThread" class="chat-thread">
           <div class="chat-empty" id="chatEmpty">
-            Start a negotiation to begin the conversation.
+            <div class="empty-icon">✦</div>
+            <strong>Ready when you are</strong>
+            <span>Start a negotiation to give Parley the first move.</span>
+            <div class="empty-pills"><span>Real-time agent</span><span>Price-only strategy</span><span>Full audit trail</span></div>
           </div>
         </div>
 
@@ -92,12 +99,15 @@
           </div>
         </div>
 
-        <div class="chat-input-row" id="offerRow" style="display:none;">
-          <input type="number" id="askInput" placeholder="Enter the seller's asking price">
-          <button id="sendBtn" class="primary">Send</button>
+        <div class="desk-actions">
+          <div class="chat-input-row" id="offerRow" style="display:none;">
+            <label for="askInput">SELLER'S ASK</label>
+            <input type="number" id="askInput" placeholder="Enter a price" min="0" step="0.01">
+            <button id="sendBtn" class="primary">Send offer <span>↗</span></button>
+          </div>
+          <button id="startBtn" class="primary">Start negotiation <span>↗</span></button>
+          <button id="newBtn" class="primary" style="display:none;">↻ New negotiation</button>
         </div>
-        <button id="startBtn" class="primary" style="margin-top:8px;">Start Negotiation</button>
-        <button id="newBtn" class="primary" style="display:none; margin-top:8px;">↻ New negotiation</button>
       </div>
 
       <div class="proposal-col">
