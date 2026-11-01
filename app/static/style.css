@@ -1306,6 +1306,195 @@ button.primary-soft:hover{ background:#e8b850; border-color:#e8b850; }
 /* The legacy desk breakpoint collapses the grid at 1000px. Keep the refreshed
    desk console beside the transcript until the narrow mobile layout begins. */
 @media (min-width:901px) and (max-width:1100px){
-  .desk-body{ grid-template-columns:120px minmax(0,1fr) 292px; }
-  .proposal-col{ grid-column:auto; }
+  .desk-body{ grid-template-columns:120px minmax(0,1fr); }
+  .proposal-col{ grid-column:2; }
 }
+
+/* Outcome result hierarchy: one clear verdict, one price hero, then the
+   comparison and supporting evidence. Walk-away and timeout cards continue
+   using their existing outcome-grid markup and colors. */
+.outcome-card.deal{
+  padding:24px 26px 20px; border-left:3px solid var(--deal);
+  background:linear-gradient(180deg, #f8fdfb 0%, var(--deal-soft) 100%);
+}
+.outcome-success-heading{
+  display:flex; align-items:center; gap:9px; color:var(--deal);
+  font-family:var(--heading); font-size:17px; font-weight:700;
+  letter-spacing:-.15px; text-transform:none; margin-bottom:22px;
+}
+.outcome-success-icon{
+  display:flex; align-items:center; justify-content:center; width:24px; height:24px;
+  border-radius:50%; background:var(--deal); color:#fff; font-family:var(--sans);
+  font-size:13px; font-weight:700;
+}
+.outcome-hero-price{
+  padding-bottom:22px; text-align:center; border-bottom:1px solid rgba(79,184,144,.22);
+}
+.outcome-hero-price span{
+  display:block; color:var(--ink-dim); font-size:10px; font-weight:700;
+  letter-spacing:.8px; text-transform:uppercase; margin-bottom:7px;
+}
+.outcome-hero-price strong{
+  display:block; color:var(--ink); font-family:var(--mono); font-size:32px;
+  font-weight:700; letter-spacing:-1px; line-height:1.05;
+}
+.outcome-price-comparison{
+  display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px;
+  padding:17px 0; border-bottom:1px solid rgba(79,184,144,.22);
+}
+.outcome-price-item{
+  min-width:0; display:flex; flex-direction:column; gap:5px;
+  padding-left:12px; border-left:1px solid rgba(79,184,144,.22);
+}
+.outcome-price-item:first-child{ padding-left:0; border-left:0; }
+.outcome-price-item span{
+  color:var(--ink-dim); font-size:9px; font-weight:700;
+  letter-spacing:.35px; text-transform:uppercase;
+}
+.outcome-price-item b{
+  color:var(--ink); font-family:var(--mono); font-size:13px; white-space:nowrap;
+}
+.outcome-price-final b{ color:var(--deal); }
+.outcome-supporting-metrics{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:16px 0 4px;
+}
+.outcome-supporting-metrics > div{ display:flex; flex-direction:column; gap:4px; }
+.outcome-supporting-metrics span{
+  color:var(--ink-dim); font-size:9px; font-weight:700;
+  letter-spacing:.35px; text-transform:uppercase;
+}
+.outcome-supporting-metrics b{
+  color:var(--ink); font-family:var(--mono); font-size:13px; font-weight:600;
+}
+.outcome-supporting-metrics .outcome-savings{ color:var(--deal); }
+.outcome-card.deal .outcome-explain{
+  margin-top:14px; padding:10px 12px; border-left:2px solid var(--deal);
+  color:var(--ink-dim); background:rgba(255,255,255,.55); font-size:11.5px;
+  line-height:1.45; font-weight:500;
+}
+.outcome-protected{
+  display:flex; align-items:center; gap:7px; margin-top:14px; padding-top:12px;
+  border-top:1px solid rgba(79,184,144,.22); color:var(--ink-dim);
+  font-size:10.5px; line-height:1.35;
+}
+.outcome-protected b{ color:var(--ink); font-weight:600; }
+.outcome-protected-icon{
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:16px; height:16px; border-radius:50%; background:var(--deal-soft);
+  color:var(--deal); font-size:10px; font-weight:700;
+}
+@media (max-width:600px){
+  .outcome-card.deal{ padding:20px 16px 17px; }
+  .outcome-success-heading{ margin-bottom:18px; }
+  .outcome-hero-price strong{ font-size:28px; }
+  .outcome-price-comparison{ grid-template-columns:1fr; gap:12px; }
+  .outcome-price-item,
+  .outcome-price-item:first-child{ padding:0 0 0 9px; border-left:2px solid rgba(79,184,144,.22); }
+  .outcome-supporting-metrics{ gap:8px; }
+  .outcome-supporting-metrics b{ font-size:12px; }
+}
+
+/* Compact Deal Context and live status console. These rules intentionally
+   override the earlier generic card styles while preserving the existing
+   DOM and state-update hooks. */
+.console-deal-context{ padding:18px 18px 16px; }
+.console-deal-context .console-section-label{ margin-bottom:13px; }
+.console-deal-context .item-name{
+  min-width:0; max-width:100%; margin:0; line-height:1.2;
+  overflow-wrap:anywhere; word-break:normal;
+}
+.console-deal-context .item-cat{
+  margin:3px 0 11px; line-height:1.25; overflow-wrap:anywhere;
+}
+.console-deal-context .item-desc{
+  margin:0 0 9px; line-height:1.4; font-size:11.5px;
+}
+.console-deal-context .item-details{
+  display:flex; flex-direction:column; gap:3px; margin:0 0 12px;
+  padding:0; list-style:none; font-size:11.5px; line-height:1.35;
+}
+.console-deal-context .item-details li{
+  padding-left:13px; position:relative; overflow-wrap:anywhere;
+}
+.console-deal-context .item-details li::before{
+  content:'·'; position:absolute; left:1px; color:var(--accent); font-weight:700;
+}
+.console-deal-context .item-range{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:6px;
+  padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  color:var(--accent); font-family:var(--mono); font-size:12px;
+}
+.item-range-label{
+  color:var(--ink-dim); font-family:var(--sans); font-size:10px;
+  font-weight:700; letter-spacing:.45px; text-transform:uppercase;
+}
+.console-deal-context .item-range b{ font-size:13px; }
+.console-deal-context .item-range span:last-child{
+  margin-left:auto; color:var(--ink-dim); font-size:10.5px;
+}
+.console-deal-context .item-concessions{
+  margin-top:11px; padding-top:0; border-top:0; gap:0;
+}
+.console-deal-context .concession-row{ gap:5px; }
+.console-deal-context .concession-row > span:first-child{
+  flex-basis:auto; margin-right:3px; font-size:9px;
+}
+.console-deal-context .concession-chip{
+  padding:4px 8px; font-size:9.5px; line-height:1.1;
+  max-width:100%; overflow-wrap:anywhere;
+}
+.console-status{ padding:16px 18px 18px; }
+.console-status .console-section-label{ margin-bottom:14px; }
+.parley-status-head{ gap:6px; margin-bottom:5px; }
+.parley-status-label{ font-size:10px; }
+.parley-status-state{ font-size:16px; line-height:1.15; }
+.phase-pill{ margin-left:auto; }
+.agent-activity{
+  margin:0; padding:0 0 13px; font-size:11.5px; line-height:1.35;
+  border-bottom:1px solid var(--line);
+}
+.status-empty{
+  display:flex; align-items:center; gap:7px; padding-top:13px;
+  color:var(--ink-dim); font-size:11px;
+}
+.status-empty[hidden], .status-metrics[hidden]{ display:none; }
+.status-empty-dot{
+  width:7px; height:7px; border-radius:50%; background:var(--accent-dim);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.status-metrics{ padding-top:13px; }
+.status-round{
+  display:grid; grid-template-columns:1fr auto; align-items:center; gap:5px 10px;
+  color:var(--ink-dim); font-size:11px;
+}
+.status-round b{ color:var(--accent); font-family:var(--mono); font-size:13px; }
+.round-progress{
+  grid-column:1 / -1; height:4px; background:var(--panel-2);
+  border-radius:5px; overflow:hidden;
+}
+.round-progress i{
+  display:block; height:100%; width:0; border-radius:inherit;
+  background:var(--accent); transition:width .35s ease;
+}
+.status-values{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  margin-top:12px;
+}
+.status-value{
+  min-width:0; padding:8px 9px; border:1px solid var(--line);
+  border-radius:8px; background:var(--panel-2);
+}
+.status-value span{
+  display:block; margin-bottom:4px; color:var(--ink-dim); font-size:9px;
+  font-weight:600; text-transform:uppercase; letter-spacing:.35px;
+}
+.status-value b{
+  display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--ink); font-family:var(--mono); font-size:11.5px;
+}
+.status-value:nth-child(2) b{ color:var(--accent); }
+.compact-status-row{
+  margin-top:10px; padding:9px 0 0; border-top:1px solid var(--line);
+  border-bottom:0; font-size:10.5px;
+}
+.compact-status-row b{ font-size:11px; }

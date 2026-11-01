@@ -281,19 +281,35 @@ function renderOutcome(data, lastAsk){
           ? `<div class="outcome-explain">This closed ${fmtPrice(vsTarget)} above your target of ${fmtPrice(target)}, but still ${fmtPrice(savings)} below Parley's reservation price — real value was still captured.</div>`
           : `<div class="outcome-explain">This closed ${fmtPrice(-vsTarget)} below your target of ${fmtPrice(target)} — extra value beyond what you expected.</div>`;
     }
+    const requirementCount = negotiationRecord.requirements ? negotiationRecord.requirements.length : 0;
+    const requirementLabel = `${requirementCount} protected requirement${requirementCount === 1 ? '' : 's'}`;
     div.innerHTML = `
-      <div class="outcome-headline">✓ Deal closed at <b>${fmtPrice(data.deal_price)}</b></div>
-      <div class="outcome-grid">
-        <div><span>Seller's final ask</span><b>${fmtPrice(lastAsk)}</b></div>
-        <div><span>Parley's final offer</span><b>${fmtPrice(data.buyer_offer)}</b></div>
-        <div><span>Target price</span><b>${fmtPrice(target)}</b></div>
-        <div><span>Parley's reservation price</span><b>${fmtPrice(data.buyer_max)}</b></div>
+      <div class="outcome-success-heading"><span class="outcome-success-icon">✓</span><span>Deal successfully closed</span></div>
+      <div class="outcome-hero-price">
+        <span>Final negotiated price</span>
+        <strong>${fmtPrice(data.deal_price)}</strong>
+      </div>
+      <div class="outcome-price-comparison">
+        <div class="outcome-price-item outcome-price-final">
+          <span>Final deal price</span><b>${fmtPrice(data.deal_price)}</b>
+        </div>
+        <div class="outcome-price-item">
+          <span>Your target</span><b>${fmtPrice(target)}</b>
+        </div>
+        <div class="outcome-price-item">
+          <span>Reservation price</span><b>${fmtPrice(data.buyer_max)}</b>
+        </div>
+      </div>
+      <div class="outcome-supporting-metrics">
         <div><span>Value captured</span><b class="outcome-savings">${fmtPrice(savings)}</b></div>
-        <div><span>Rounds</span><b>${roundCount}</b></div>
+        <div><span>Negotiation rounds</span><b>${roundCount}</b></div>
         <div><span>Duration</span><b>${duration || '—'}</b></div>
       </div>
       ${targetLine}
-      ${termsLine ? `<div class="outcome-explain">${termsLine} — carried with this deal, not negotiated by price.</div>` : ''}
+      <div class="outcome-protected">
+        <span class="outcome-protected-icon">✓</span>
+        <span><b>${requirementLabel}</b> carried into the agreement${termsLine && itemQuantity ? ` · ${itemQuantity}` : ''}</span>
+      </div>
     `;
   } else if (cls === 'walk'){
     const isSafeguard = data.walk_reason === 'safeguard' || data.walk_reason === 'seller_stalled';
@@ -394,23 +410,27 @@ function renderProposalSkeleton(){
       <span class="phase-pill" id="pPhase">OPENING</span>
     </div>
     <div class="agent-activity" id="pActivity">Awaiting the seller's first ask.</div>
-
-    <div class="negotiation-zone" id="pZone">
-      <div class="negotiation-zone-track">
-        <div class="negotiation-zone-fill" id="pZoneFill"></div>
-        <div class="negotiation-zone-marker buyer" id="pZoneBuyer" title="Parley's offer"></div>
-        <div class="negotiation-zone-marker seller" id="pZoneSeller" title="Seller's ask"></div>
-      </div>
-      <div class="negotiation-zone-labels"><span>Seller's floor</span><span>Opening ask</span></div>
+    <div class="status-empty" id="pEmpty">
+      <span class="status-empty-dot"></span>
+      <span>Waiting for the seller's first ask</span>
     </div>
 
-    <div class="proposal-row"><span>Round</span><b id="pRound">0 / ${maxRounds}</b></div>
-    <div class="proposal-row"><span>Seller's ask</span><b id="pSellerAsk">—</b></div>
-    <div class="proposal-row"><span>Current position</span><b id="pBuyerOffer">—</b></div>
-    <div class="proposal-row"><span>Movement</span><b id="pMovement">—</b></div>
-    <div class="proposal-row" id="pStatusRow"><span>Current action</span><b id="pStatusText" class="status-badge-text">—</b></div>
-    <div class="proposal-row"><span>Negotiation position</span><b id="pPosition">—</b></div>
-    <div class="proposal-row proposal-row-sub"><span>Seller's floor (this scenario)</span><b>${fmtPrice(sellerMin)}</b></div>
+    <div class="status-metrics" id="pMetrics" hidden>
+      <div class="status-round">
+        <span>Round</span>
+        <b id="pRound">0 / ${maxRounds}</b>
+        <div class="round-progress"><i id="pRoundProgress"></i></div>
+      </div>
+      <div class="status-values">
+        <div class="status-value"><span>Seller ask</span><b id="pSellerAsk">—</b></div>
+        <div class="status-value"><span>Parley's offer</span><b id="pBuyerOffer">—</b></div>
+        <div class="status-value"><span>Movement</span><b id="pMovement">—</b></div>
+        <div class="status-value"><span>Gap</span><b id="pPosition">—</b></div>
+      </div>
+      <div class="proposal-row compact-status-row" id="pStatusRow">
+        <span>Current action</span><b id="pStatusText" class="status-badge-text">—</b>
+      </div>
+    </div>
   `;
 }
 
@@ -431,22 +451,8 @@ function agentActivitySentence(stageLabel, done, outcome){
 }
 
 function updateNegotiationZone(sellerAsk, buyerOffer){
-  const zoneSeller = document.getElementById('pZoneSeller');
-  const zoneBuyer = document.getElementById('pZoneBuyer');
-  const zoneFill = document.getElementById('pZoneFill');
-  if (!zoneSeller || openingGap === null) return;
-  // fixed scale established at round 1: [sellerMin, opening seller ask] —
-  // both fully observable, never Parley's hidden max
-  const lo = sellerMin;
-  const hi = Math.max(sellerMin + 1, lastProposalSeller !== null ? Math.max(sellerAsk, lo + openingGap) : sellerAsk);
-  const span = Math.max(1e-6, hi - lo);
-  const pct = (v) => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
-  zoneSeller.style.left = pct(sellerAsk) + '%';
-  zoneBuyer.style.left = pct(buyerOffer) + '%';
-  const left = Math.min(pct(sellerAsk), pct(buyerOffer));
-  const right = Math.max(pct(sellerAsk), pct(buyerOffer));
-  zoneFill.style.left = left + '%';
-  zoneFill.style.width = Math.max(0, right - left) + '%';
+  // Kept as a no-op compatibility seam for older callers. The normal Deal
+  // Desk deliberately does not expose seller-floor information.
 }
 
 const PULSE_PHASES = ['OPENING', 'COUNTERING', 'CONVERGING', 'CLOSING'];
@@ -499,12 +505,18 @@ function updateProposalValues(round, sellerAsk, buyerOffer, statusText, statusCl
   const pStatusRow = document.getElementById('pStatusRow');
   const pStatusText = document.getElementById('pStatusText');
   const pPosition = document.getElementById('pPosition');
+  const pEmpty = document.getElementById('pEmpty');
+  const pMetrics = document.getElementById('pMetrics');
+  const pRoundProgress = document.getElementById('pRoundProgress');
   const pPhase = document.getElementById('pPhase');
   const pState = document.getElementById('pState');
   const pActivity = document.getElementById('pActivity');
   if (!pRound) return;
 
   pRound.textContent = `${round} / ${maxRounds}`;
+  if (pEmpty) pEmpty.hidden = true;
+  if (pMetrics) pMetrics.hidden = false;
+  if (pRoundProgress) pRoundProgress.style.width = `${Math.min(100, (round / maxRounds) * 100)}%`;
 
   const movement = (lastProposalOffer !== null && buyerOffer !== null) ? buyerOffer - lastProposalOffer : null;
   if (pMovement) pMovement.textContent = movement !== null ? (movement > 0.05 ? `+${fmtPrice(movement)}` : 'No movement') : '—';
@@ -523,7 +535,7 @@ function updateProposalValues(round, sellerAsk, buyerOffer, statusText, statusCl
     if (openingSellerAsk === null) openingSellerAsk = sellerAsk;
     if (openingBuyerOffer === null) openingBuyerOffer = buyerOffer;
     phase = derivePhase(round, maxRounds, gapNow, openingGap);
-    if (pPosition) pPosition.textContent = derivePosition(gapNow, lastGap);
+    if (pPosition) pPosition.textContent = fmtPrice(gapNow);
     if (pPhase) pPhase.textContent = phase;
     updateNegotiationZone(sellerAsk, buyerOffer);
     gapHistory.push(gapNow);
@@ -603,15 +615,21 @@ async function startNegotiation(){
   icName.textContent = data.item.name;
   if (icCategory) icCategory.textContent = data.category || '';
   icDesc.textContent = data.item.description;
-  const detailItems = data.item.quantity ? [`Qty ${data.item.quantity}`, ...(data.item.details || [])] : (data.item.details || []);
+  const detailItems = [...new Set([
+    ...(data.item.quantity ? [`Qty ${data.item.quantity}`] : []),
+    ...(data.item.details || []),
+  ])];
   icDetails.innerHTML = detailItems.map(d => `<li>${d}</li>`).join('');
-  const perUnitPart = data.item.quantity ? ` (≈ ${fmtPrice(data.item.reference_price / data.item.quantity)}/unit)` : '';
-  icRange.textContent = `Target price ${fmtPrice(data.item.reference_price)}${perUnitPart}`;
+  const quantityMatch = (data.item.details || []).join(' ').match(/\bQty\s+([\d,]+)/i);
+  const quantityForDisplay = data.item.quantity || (quantityMatch ? Number(quantityMatch[1].replace(/,/g, '')) : null);
+  const perUnitPart = quantityForDisplay
+    ? `<span>≈ ${fmtPrice(data.item.reference_price / quantityForDisplay)} / unit</span>`
+    : '';
+  icRange.innerHTML = `<span class="item-range-label">Target price</span><b>${fmtPrice(data.item.reference_price)}</b>${perUnitPart}`;
   if (icConcessions){
     const inv = negotiationRecord.concessionInventory;
     icConcessions.innerHTML = `
-      <div class="concession-row"><span>Negotiable</span>${inv.negotiable.map(t => `<span class="concession-chip negotiable">${t}</span>`).join('')}</div>
-      <div class="concession-row"><span>Protected</span>${inv.protected.length ? inv.protected.map(t => `<span class="concession-chip protected">${t}</span>`).join('') : '<span class="concession-chip protected">None recorded</span>'}</div>
+      <div class="concession-row"><span>Terms</span><span class="concession-chip negotiable">${inv.negotiable.join(' · ') || 'Price'}</span><span class="concession-chip protected">Requirements protected</span></div>
     `;
   }
   itemCard.style.display = 'block';
