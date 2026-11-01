@@ -13,6 +13,8 @@ const heroStage = document.getElementById('heroPreviewStage');
 const heroStatusDot = document.getElementById('heroStatusDot');
 const heroStatusText = document.getElementById('heroStatusText');
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const heroStageHeight = 4 * 48; // 4 rows, each 48px tall
+const heroStageMaxScroll = heroStageHeight - heroStage.clientHeight;
 
 function fmtUsd(n){
   return '$' + n.toLocaleString('en-US');
